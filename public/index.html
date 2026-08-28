@@ -156,6 +156,26 @@ textarea{min-height:90px;resize:vertical}
 .analytics-row{padding:10px 0;border-bottom:1px solid var(--line)}.analytics-row:last-child{border:0}
 @media(max-width:760px){.offer-cards{grid-template-columns:1fr}.network-card,.task-card{grid-template-columns:1fr}}
 
+
+/* FIRST-LAUNCH EXPERIENCE */
+.first-launch{position:fixed;inset:0;background:rgba(20,17,15,.72);backdrop-filter:blur(7px);z-index:250;display:none;align-items:center;justify-content:center;padding:20px}
+.first-launch.show{display:flex}
+.first-launch-card{width:min(920px,96vw);max-height:92vh;overflow:auto;background:var(--ivory);border:1px solid #e1d4c4;border-radius:24px;box-shadow:0 35px 100px rgba(0,0,0,.32)}
+.first-launch-hero{background:linear-gradient(135deg,#302720,#181512);padding:34px;color:white;position:relative;overflow:hidden}
+.first-launch-hero:after{content:"";position:absolute;width:300px;height:300px;border-radius:50%;background:rgba(215,195,166,.09);right:-100px;top:-150px}
+.first-launch-hero h2{color:white;font-size:34px;margin-top:7px}
+.first-launch-hero p{color:#d7cdc1;max-width:650px;line-height:1.6}
+.launch-body{padding:28px 34px 32px}
+.launch-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:11px;margin:18px 0}
+.launch-step{border:1px solid var(--line);background:#fffdf9;border-radius:14px;padding:15px}
+.launch-step b{display:block;font-family:Georgia,serif;color:var(--espresso);font-size:16px;margin:8px 0 5px}
+.launch-step small{color:var(--muted);line-height:1.45}
+.launch-num{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:#eadfce;color:var(--espresso);font-size:10px;font-weight:900}
+.launch-actions{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-top:20px;flex-wrap:wrap}
+.launch-note{font-size:10px;color:var(--muted);max-width:470px;line-height:1.5}
+.demo-badge{display:inline-flex;border:1px solid rgba(215,195,166,.5);border-radius:999px;padding:7px 10px;color:#e7d8c5;font-size:9px;letter-spacing:1px;margin-top:10px}
+@media(max-width:700px){.launch-steps{grid-template-columns:1fr}.first-launch-hero,.launch-body{padding:24px}.first-launch-hero h2{font-size:28px}}
+
 </style>
 </head>
 <body>
@@ -694,6 +714,37 @@ textarea{min-height:90px;resize:vertical}
     <div class="wiz-actions"><button class="btn ghost" id="wizBack">BACK</button><button class="btn primary" id="wizNext">CONTINUE →</button></div>
   </div>
 </div>
+
+<div class="first-launch" id="firstLaunch">
+  <div class="first-launch-card">
+    <div class="first-launch-hero">
+      <div class="eyebrow" style="color:#d7c3a6">WELCOME TO THE FRONT SHELF</div>
+      <h2>Your job search has a home now.</h2>
+      <p>This planner connects your applications, interviews, networking, offers, weekly actions and search insights in one private browser-based workspace.</p>
+      <div class="demo-badge">YOUR CAREER. ORGANIZED.</div>
+    </div>
+    <div class="launch-body">
+      <div class="eyebrow">START HERE</div>
+      <div class="launch-steps">
+        <div class="launch-step"><div class="launch-num">1</div><b>Personalize it</b><small>Tell the planner what you are targeting, your weekly goals and what matters most in your next role.</small></div>
+        <div class="launch-step"><div class="launch-num">2</div><b>Add opportunities</b><small>Track jobs as you find them. Interviews, contacts, tasks and offers can stay linked to the same opportunity.</small></div>
+        <div class="launch-step"><div class="launch-num">3</div><b>Let it connect</b><small>Your Home dashboard and Analytics update from the real information you enter — no fake metrics.</small></div>
+      </div>
+      <div class="priority">
+        <div class="eyebrow">GOOD TO KNOW</div>
+        <div class="meta" style="margin-top:6px">Your planner data is stored locally in this browser. Use Export Backup regularly if the information matters to you, especially before clearing browser data or moving to another device.</div>
+      </div>
+      <div class="launch-actions">
+        <div class="launch-note">You can revisit the Quick Start Wizard anytime from Setup. Nothing here requires an account or AI subscription.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn ghost" id="exploreLaunch">EXPLORE FIRST</button>
+          <button class="btn primary" id="startLaunch">SET UP MY PLANNER →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast">Saved.</div>
 
 <script>
@@ -1332,7 +1383,25 @@ function saveWizStep(){
 function renderWiz(){$("#wizBody").innerHTML=wizSteps[wizStep]();$("#wizDots").innerHTML=wizSteps.map((_,i)=>`<i class="${i<=wizStep?"on":""}"></i>`).join("");$("#wizBack").style.visibility=wizStep===0?"hidden":"visible";$("#wizNext").textContent=wizStep===wizSteps.length-1?"BUILD MY DASHBOARD →":"CONTINUE →";$("#wizBody").onclick=e=>{if(e.target.matches("[data-wday]")){const i=+e.target.dataset.wday;data.settings.searchDays[i]=data.settings.searchDays[i]?0:1;renderWiz()}}}
 function openWizard(){wizStep=0;$("#wizard").classList.add("show");renderWiz()}
 $("#openWizard").onclick=openWizard;$("#wizBack").onclick=()=>{saveWizStep();wizStep=Math.max(0,wizStep-1);renderWiz()};$("#wizNext").onclick=()=>{saveWizStep();if(wizStep<wizSteps.length-1){wizStep++;renderWiz()}else{data.settings.wizardSeen=true;data.settings.setupComplete=setupChecks().every(Boolean);save();$("#wizard").classList.remove("show");renderAll();showView("home");toast("Your dashboard is ready.")}};
+
+const FIRST_LAUNCH_KEY="frontShelfJobSearchSystemV1_welcomeSeen";
+function showFirstLaunchIfNeeded(){
+  if(!localStorage.getItem(FIRST_LAUNCH_KEY)) $("#firstLaunch").classList.add("show");
+}
+function finishFirstLaunch(goSetup){
+  localStorage.setItem(FIRST_LAUNCH_KEY,"1");
+  $("#firstLaunch").classList.remove("show");
+  if(goSetup){
+    showView("setup");
+    if(typeof openWizard==="function") openWizard();
+    else if($("#openWizard")) $("#openWizard").click();
+  }else showView("home");
+}
+$("#startLaunch").onclick=()=>finishFirstLaunch(true);
+$("#exploreLaunch").onclick=()=>finishFirstLaunch(false);
+
 renderAll();
+showFirstLaunchIfNeeded();
 if(!data.settings.wizardSeen && !raw) setTimeout(openWizard,350);
 </script>
 </body>
