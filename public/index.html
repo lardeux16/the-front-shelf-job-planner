@@ -141,6 +141,21 @@ textarea{min-height:90px;resize:vertical}
 .prep-score{font:500 38px Georgia,serif;color:var(--espresso);margin:9px 0}
 @media(max-width:700px){.interview-card{grid-template-columns:1fr}.prep-layout{grid-template-columns:1fr}.interview-actions{justify-content:flex-start}}
 
+
+.network-list,.offer-cards,.weekly-list{display:grid;gap:12px}
+.network-card,.offer-card,.task-card{border:1px solid var(--line);border-radius:14px;background:#fffdf9;padding:16px}
+.network-card,.task-card{display:grid;grid-template-columns:1fr auto;gap:12px}
+.network-name,.offer-company,.task-title{font-family:Georgia,serif;font-size:19px;color:var(--espresso)}
+.tagrow{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}.tagrow span{font-size:9px;padding:6px 8px;border-radius:999px;background:#f2e8dc;border:1px solid #e4d7c7;color:#5d4b3f}
+.offer-cards{grid-template-columns:repeat(2,minmax(0,1fr))}
+.offer-score{font:500 34px Georgia,serif;color:var(--espresso)}
+.scoreline{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px}
+.matrix{width:100%;border-collapse:collapse;font-size:11px}.matrix th,.matrix td{padding:10px;border-bottom:1px solid var(--line);text-align:left}.matrix th{font-size:9px;color:var(--muted);letter-spacing:.8px}
+.task-card.done{opacity:.6}.task-check{display:flex;align-items:flex-start;gap:10px}.task-check input{width:auto;margin:2px 0 0}.task-meta{font-size:10px;color:var(--muted);margin-top:6px}
+.analytics-bar{height:8px;background:#e6dbcf;border-radius:99px;overflow:hidden;margin-top:6px}.analytics-bar i{display:block;height:100%;background:var(--mocha)}
+.analytics-row{padding:10px 0;border-bottom:1px solid var(--line)}.analytics-row:last-child{border:0}
+@media(max-width:760px){.offer-cards{grid-template-columns:1fr}.network-card,.task-card{grid-template-columns:1fr}}
+
 </style>
 </head>
 <body>
@@ -300,11 +315,119 @@ textarea{min-height:90px;resize:vertical}
           <div id="interviewList" class="interview-list" style="margin-top:16px"></div>
         </div>
       </section>
-      <section class="view" id="network"><div class="placeholder"><b>Relationship Tracker is queued.</b><p>Contacts will connect directly to opportunities and follow-ups.</p></div></section>
-      <section class="view" id="offers"><div class="placeholder"><b>Offers Decision Center is queued.</b><p>Weighted comparisons and negotiation tracking come later in V2.</p></div></section>
-      <section class="view" id="analytics"><div class="placeholder"><b>Search Intelligence is queued.</b><p>Only real, calculated insights will appear here.</p></div></section>
-      <section class="view" id="ai"><div class="placeholder"><b>AI-Ready Prompt Builder is queued.</b><p>No API key required. Prompts will be built locally from planner data.</p></div></section>
-      <section class="view" id="weekly"><div class="placeholder"><b>Weekly Plan V2 is queued.</b><p>Tasks, goals and focus days will connect to the rest of the system.</p></div></section>
+
+      <section class="view" id="network">
+        <div class="card">
+          <div class="card-head">
+            <div><div class="eyebrow">RELATIONSHIP TRACKER</div><h2 style="margin-top:4px">Network</h2><p class="sub">Keep relationships warm, useful and connected to the opportunities they support.</p></div>
+            <button class="btn primary" id="addContact">+ ADD CONTACT</button>
+          </div>
+          <div class="kpis">
+            <div class="kpi"><strong id="netTotal">0</strong><small>CONTACTS</small></div>
+            <div class="kpi"><strong id="netWarm">0</strong><small>WARM + STRONG</small></div>
+            <div class="kpi"><strong id="netDue">0</strong><small>FOLLOW-UPS DUE</small></div>
+            <div class="kpi"><strong id="netLinked">0</strong><small>LINKED TO JOBS</small></div>
+          </div>
+          <div class="row" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">
+            <input id="networkSearch" placeholder="Search name, company, role..." style="flex:1;min-width:220px">
+            <select id="networkStrengthFilter" style="width:170px"><option value="">All strengths</option><option>Cold</option><option>Neutral</option><option>Warm</option><option>Strong</option></select>
+          </div>
+          <div id="networkEmpty" class="placeholder" style="margin-top:16px;display:none"><b>No contacts yet.</b><p>Add recruiters, hiring managers, peers and referrals here.</p><button class="btn primary" id="addFirstContact">ADD MY FIRST CONTACT</button></div>
+          <div id="networkList" class="network-list" style="margin-top:16px"></div>
+        </div>
+      </section>
+
+      <section class="view" id="offers">
+        <div class="card">
+          <div class="card-head">
+            <div><div class="eyebrow">DECISION CENTER</div><h2 style="margin-top:4px">Offers</h2><p class="sub">Compare offers using the priorities you set in Setup — not just salary.</p></div>
+            <button class="btn primary" id="addOffer">+ ADD OFFER</button>
+          </div>
+          <div class="kpis">
+            <div class="kpi"><strong id="offerCount">0</strong><small>OFFERS</small></div>
+            <div class="kpi"><strong id="offerTopScore">—</strong><small>TOP SCORE</small></div>
+            <div class="kpi"><strong id="offerDeadlines">0</strong><small>DEADLINES ≤ 7 DAYS</small></div>
+            <div class="kpi"><strong id="offerNegotiating">0</strong><small>NEGOTIATING</small></div>
+          </div>
+          <div id="offerEmpty" class="placeholder" style="margin-top:16px;display:none"><b>No offers yet.</b><p>When an offer arrives, add it here and compare it against what actually matters to you.</p><button class="btn primary" id="addFirstOffer">ADD MY FIRST OFFER</button></div>
+          <div id="offerMatrixWrap" style="margin-top:16px;overflow:auto"></div>
+          <div id="offerCards" class="offer-cards" style="margin-top:16px"></div>
+        </div>
+      </section>
+
+      <section class="view" id="analytics">
+        <div class="card">
+          <div class="card-head">
+            <div><div class="eyebrow">SEARCH INTELLIGENCE</div><h2 style="margin-top:4px">Analytics</h2><p class="sub">Only real calculations from your tracker. No decorative fake metrics.</p></div>
+          </div>
+          <div id="analyticsEmpty" class="placeholder" style="display:none"><b>Not enough data yet.</b><p>Add and update real jobs first. Your analytics will become useful as the search grows.</p></div>
+          <div id="analyticsContent">
+            <div class="kpis">
+              <div class="kpi"><strong id="anApps">0</strong><small>APPLICATIONS</small></div>
+              <div class="kpi"><strong id="anResponse">0%</strong><small>RESPONSE RATE</small></div>
+              <div class="kpi"><strong id="anInterview">0%</strong><small>INTERVIEW RATE</small></div>
+              <div class="kpi"><strong id="anOffer">0%</strong><small>OFFER RATE</small></div>
+            </div>
+            <div class="grid2">
+              <div class="card" style="box-shadow:none"><div class="eyebrow">WHAT THE NUMBERS SAY</div><div id="analyticsInsights" style="margin-top:10px"></div></div>
+              <div class="card" style="box-shadow:none"><div class="eyebrow">SOURCE PERFORMANCE</div><div id="sourceAnalytics" style="margin-top:10px"></div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="ai">
+        <div class="card">
+          <div class="card-head">
+            <div><div class="eyebrow">AI-READY CAREER TOOLKIT</div><h2 style="margin-top:4px">Prompt Builder</h2><p class="sub">Build useful prompts from your planner context, then copy them into ChatGPT, Claude or Gemini.</p></div>
+          </div>
+          <div class="grid2">
+            <div>
+              <label>Prompt type
+                <select id="aiCategory">
+                  <option value="resume">Resume Tailoring</option>
+                  <option value="cover">Cover Letter</option>
+                  <option value="analysis">Job Analysis</option>
+                  <option value="interview">Interview Prep</option>
+                  <option value="networking">Networking</option>
+                  <option value="followup">Follow-Up</option>
+                  <option value="negotiation">Negotiation</option>
+                  <option value="strategy">Career Strategy</option>
+                </select>
+              </label>
+              <label style="display:block;margin-top:12px">Use a job
+                <select id="aiJob"></select>
+              </label>
+              <label style="display:block;margin-top:12px">Extra instructions
+                <textarea id="aiExtra" placeholder="Tone, constraints, what you want the AI to focus on..."></textarea>
+              </label>
+              <button class="btn primary" id="buildPrompt" style="margin-top:12px">BUILD PROMPT</button>
+            </div>
+            <div>
+              <label>Generated prompt<textarea id="aiPrompt" style="min-height:320px" placeholder="Your prompt will appear here..."></textarea></label>
+              <button class="btn soft" id="copyPrompt" style="margin-top:10px">COPY PROMPT</button>
+              <div class="priority" style="margin-top:12px"><div class="eyebrow">PRIVACY</div><div class="meta" style="margin-top:6px">Prompt building happens in your browser. Nothing is sent to an AI service until you choose to copy and use your prompt there.</div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="weekly">
+        <div class="card">
+          <div class="card-head">
+            <div><div class="eyebrow">WEEKLY PLAN</div><h2 style="margin-top:4px">This week</h2><p class="sub">A connected agenda for applications, networking, interview prep and follow-ups.</p></div>
+            <button class="btn primary" id="addTask">+ ADD TASK</button>
+          </div>
+          <div class="kpis">
+            <div class="kpi"><strong id="weekAppsGoal">0</strong><small>APPLICATION GOAL</small></div>
+            <div class="kpi"><strong id="weekNetGoal">0</strong><small>NETWORKING GOAL</small></div>
+            <div class="kpi"><strong id="weekDone">0%</strong><small>TASKS COMPLETE</small></div>
+            <div class="kpi"><strong id="weekOpen">0</strong><small>OPEN TASKS</small></div>
+          </div>
+          <div id="weeklyEmpty" class="placeholder" style="margin-top:16px;display:none"><b>Your week is clear.</b><p>Add a task or use the planner naturally — follow-ups and interview prep can be reflected here too.</p><button class="btn primary" id="addFirstTask">ADD A TASK</button></div>
+          <div id="weeklyList" class="weekly-list" style="margin-top:16px"></div>
+        </div>
+      </section>
 
       <section class="view" id="documents">
         <div class="card">
@@ -362,6 +485,51 @@ textarea{min-height:90px;resize:vertical}
 </div>
 
 
+
+
+<div class="modal" id="contactModal"><div class="wizard" style="width:min(760px,96vw)">
+  <div class="wiz-top"><div class="eyebrow" style="color:#d7c3a6">NETWORK CONTACT</div><h2 id="contactModalTitle">Add contact</h2></div>
+  <div class="wiz-body"><div class="form-grid">
+    <label>Name<input id="nName"></label><label>Company<input id="nCompany"></label>
+    <label>Role / relationship<input id="nRole"></label><label>Strength<select id="nStrength"><option>Cold</option><option>Neutral</option><option>Warm</option><option>Strong</option></select></label>
+    <label>Email<input id="nEmail" type="email"></label><label>Linked job<select id="nJob"></select></label>
+    <label>Last interaction<input id="nLast" type="date"></label><label>Next follow-up<input id="nFollow" type="date"></label>
+    <label style="grid-column:1/-1">Notes<textarea id="nNotes"></textarea></label>
+  </div></div>
+  <div class="wiz-actions"><button class="btn ghost" id="cancelContact">CANCEL</button><div style="display:flex;gap:8px"><button class="btn danger" id="deleteContact" style="display:none">DELETE</button><button class="btn primary" id="saveContact">SAVE CONTACT</button></div></div>
+</div></div>
+
+<div class="modal" id="offerModal"><div class="wizard" style="width:min(880px,96vw)">
+  <div class="wiz-top"><div class="eyebrow" style="color:#d7c3a6">OFFER RECORD</div><h2 id="offerModalTitle">Add offer</h2></div>
+  <div class="wiz-body interview-scroll"><div class="form-grid">
+    <label>Linked job<select id="oJob"></select></label><label>Status<select id="oStatus"><option>Received</option><option>Negotiating</option><option>Accepted</option><option>Declined</option></select></label>
+    <label>Base salary<input id="oSalary" type="number" min="0"></label><label>Bonus / variable<input id="oBonus" type="number" min="0"></label>
+    <label>Deadline<input id="oDeadline" type="date"></label><label>PTO / vacation<input id="oPto"></label>
+    <label>Work style<select id="oWorkStyle"><option>Remote</option><option>Hybrid</option><option>On-site</option><option>Flexible</option></select></label><label>Commute / location<input id="oCommute"></label>
+    <label>Benefits score (1–10)<input id="oBenefits" type="number" min="1" max="10"></label><label>Growth score (1–10)<input id="oGrowth" type="number" min="1" max="10"></label>
+    <label>Culture score (1–10)<input id="oCulture" type="number" min="1" max="10"></label><label>Stability score (1–10)<input id="oStability" type="number" min="1" max="10"></label>
+    <label>Work-life score (1–10)<input id="oBalance" type="number" min="1" max="10"></label><label>Impact / purpose score (1–10)<input id="oImpact" type="number" min="1" max="10"></label>
+    <label>Remote flexibility score (1–10)<input id="oRemoteScore" type="number" min="1" max="10"></label><label>Compensation score (1–10)<input id="oCompScore" type="number" min="1" max="10"></label>
+    <label style="grid-column:1/-1">Counteroffer / negotiation notes<textarea id="oNegotiation"></textarea></label>
+    <label style="grid-column:1/-1">Pros<textarea id="oPros"></textarea></label>
+    <label style="grid-column:1/-1">Cons<textarea id="oCons"></textarea></label>
+    <label style="grid-column:1/-1">Gut check<textarea id="oGut"></textarea></label>
+  </div></div>
+  <div class="wiz-actions"><button class="btn ghost" id="cancelOffer">CANCEL</button><div style="display:flex;gap:8px"><button class="btn danger" id="deleteOffer" style="display:none">DELETE</button><button class="btn primary" id="saveOffer">SAVE OFFER</button></div></div>
+</div></div>
+
+<div class="modal" id="taskModal"><div class="wizard" style="width:min(680px,96vw)">
+  <div class="wiz-top"><div class="eyebrow" style="color:#d7c3a6">WEEKLY TASK</div><h2 id="taskModalTitle">Add task</h2></div>
+  <div class="wiz-body"><div class="form-grid">
+    <label style="grid-column:1/-1">Task<input id="tTitle"></label>
+    <label>Type<select id="tType"><option>Application</option><option>Networking</option><option>Interview Prep</option><option>Follow-Up</option><option>Research</option><option>Other</option></select></label>
+    <label>Due date<input id="tDue" type="date"></label>
+    <label>Priority<select id="tPriority"><option>High</option><option>Medium</option><option>Low</option></select></label>
+    <label>Linked job<select id="tJob"></select></label>
+    <label style="grid-column:1/-1">Notes<textarea id="tNotes"></textarea></label>
+  </div></div>
+  <div class="wiz-actions"><button class="btn ghost" id="cancelTask">CANCEL</button><div style="display:flex;gap:8px"><button class="btn danger" id="deleteTask" style="display:none">DELETE</button><button class="btn primary" id="saveTask">SAVE TASK</button></div></div>
+</div></div>
 
 <div class="modal" id="interviewModal">
   <div class="wizard interview-wizard">
@@ -646,7 +814,7 @@ function renderJobs(){
       <td class="${overdue?"overdue":""}">${esc(j.followUp||"—")}${overdue?" · DUE":""}</td>
       <td>${esc(j.source||"—")}</td>
       <td><span class="fit-badge">${jobFit(j)}</span></td>
-      <td><div class="job-actions">${safeLink?`<a class="job-mini job-link" href="${esc(safeLink)}" target="_blank" rel="noopener">OPEN</a>`:""}<button class="job-mini add-int-from-job" data-id="${j.id}">INTERVIEW</button><button class="job-mini edit-job" data-id="${j.id}">EDIT</button></div></td>
+      <td><div class="job-actions">${safeLink?`<a class="job-mini job-link" href="${esc(safeLink)}" target="_blank" rel="noopener">OPEN</a>`:""}<button class="job-mini add-int-from-job" data-id="${j.id}">INTERVIEW</button><button class="job-mini add-offer-from-job" data-id="${j.id}">OFFER</button><button class="job-mini edit-job" data-id="${j.id}">EDIT</button></div></td>
     </tr>`
   }).join("") || `<tr><td colspan="8" style="padding:26px;text-align:center;color:var(--muted)">No jobs match this filter.</td></tr>`;
   const stages=["Saved","Applied","Screening","Interview","Offer"];
@@ -913,7 +1081,160 @@ function saveInterviewRecord(){
   toast("Interview saved.");
 }
 
-function renderAll(){renderHome();renderSetup();renderDocuments();renderJobs();renderInterviews();}
+
+let editingContactId=null, editingOfferId=null, editingTaskId=null;
+
+function fillJobSelect(sel, selected="", includeBlank=true){
+  const el=$(sel); if(!el)return;
+  el.innerHTML=(includeBlank?'<option value="">None / choose...</option>':'')+data.jobs.map(j=>`<option value="${j.id}" ${String(j.id)===String(selected)?"selected":""}>${esc(j.company)} — ${esc(j.role)}</option>`).join("");
+}
+function linkedJob(id){return data.jobs.find(j=>String(j.id)===String(id))}
+function isDue(date){return !!(date && date<=todayISO())}
+
+/* NETWORK */
+function renderNetwork(){
+  const q=($("#networkSearch")?.value||"").toLowerCase(), f=$("#networkStrengthFilter")?.value||"";
+  $("#netTotal").textContent=data.network.length;
+  $("#netWarm").textContent=data.network.filter(n=>["Warm","Strong"].includes(n.strength)).length;
+  $("#netDue").textContent=data.network.filter(n=>isDue(n.followUp)).length;
+  $("#netLinked").textContent=data.network.filter(n=>n.jobId).length;
+  $("#networkEmpty").style.display=data.network.length?"none":"block";
+  $("#networkList").style.display=data.network.length?"grid":"none";
+  const list=data.network.filter(n=>{
+    const hay=[n.name,n.company,n.role,n.email].join(" ").toLowerCase();
+    return (!q||hay.includes(q))&&(!f||n.strength===f);
+  });
+  $("#networkList").innerHTML=list.map(n=>{
+    const j=linkedJob(n.jobId);
+    return `<div class="network-card"><div><div class="network-name">${esc(n.name||"Unnamed contact")}</div><div class="meta">${esc([n.role,n.company].filter(Boolean).join(" · ")||"")}</div>
+      <div class="tagrow"><span>${esc(n.strength||"Neutral")}</span>${n.followUp?`<span class="${isDue(n.followUp)?"overdue":""}">Follow-up ${esc(n.followUp)}</span>`:""}${j?`<span>${esc(j.company)} — ${esc(j.role)}</span>`:""}</div>
+      ${n.notes?`<div class="meta" style="margin-top:10px">${esc(n.notes)}</div>`:""}</div>
+      <div><button class="btn ghost edit-contact" data-id="${n.id}">OPEN / EDIT</button></div></div>`;
+  }).join("")||`<div class="placeholder"><b>No contacts match this filter.</b></div>`;
+}
+function openContactModal(id=null){
+  editingContactId=id; const n=id?data.network.find(x=>String(x.id)===String(id)):null;
+  $("#contactModalTitle").textContent=n?"Edit contact":"Add contact";
+  $("#nName").value=n?.name||""; $("#nCompany").value=n?.company||""; $("#nRole").value=n?.role||""; $("#nStrength").value=n?.strength||"Neutral";
+  $("#nEmail").value=n?.email||""; fillJobSelect("#nJob",n?.jobId||""); $("#nLast").value=n?.lastInteraction||""; $("#nFollow").value=n?.followUp||""; $("#nNotes").value=n?.notes||"";
+  $("#deleteContact").style.display=n?"inline-flex":"none"; $("#contactModal").classList.add("show");
+}
+function closeContactModal(){$("#contactModal").classList.remove("show");editingContactId=null}
+function saveContactRecord(){
+  const name=$("#nName").value.trim(); if(!name){toast("Contact name is required.");return}
+  const r={id:editingContactId||Date.now(),name,company:$("#nCompany").value.trim(),role:$("#nRole").value.trim(),strength:$("#nStrength").value,email:$("#nEmail").value.trim(),jobId:$("#nJob").value,lastInteraction:$("#nLast").value,followUp:$("#nFollow").value,notes:$("#nNotes").value.trim()};
+  if(editingContactId){const i=data.network.findIndex(x=>String(x.id)===String(editingContactId));if(i>=0)data.network[i]={...data.network[i],...r}}else data.network.unshift(r);
+  save();closeContactModal();renderAll();showView("network");toast("Contact saved.");
+}
+
+/* OFFERS */
+function offerScore(o){
+  const p=data.settings.priorities||{};
+  const scores={
+    "Work-Life Balance":+o.balance||0,"Growth & Learning":+o.growth||0,"Compensation":+o.compScore||0,
+    "Company Culture":+o.culture||0,"Remote Flexibility":+o.remoteScore||0,"Job Stability":+o.stability||0,"Impact & Purpose":+o.impact||0
+  };
+  const totalWeight=Object.values(p).reduce((a,b)=>a+(+b||0),0)||100;
+  const weighted=Object.entries(p).reduce((s,[k,w])=>s+(scores[k]||0)*(+w||0),0)/totalWeight;
+  return Math.round(weighted*10);
+}
+function offerCompany(o){const j=linkedJob(o.jobId);return o.company||j?.company||"Company"}
+function offerRole(o){const j=linkedJob(o.jobId);return o.role||j?.role||"Role"}
+function renderOffers(){
+  $("#offerCount").textContent=data.offers.length;
+  const scores=data.offers.map(offerScore); $("#offerTopScore").textContent=scores.length?Math.max(...scores):"—";
+  const seven=new Date();seven.setDate(seven.getDate()+7);
+  $("#offerDeadlines").textContent=data.offers.filter(o=>o.deadline&&new Date(o.deadline+"T23:59")>=new Date()&&new Date(o.deadline+"T23:59")<=seven).length;
+  $("#offerNegotiating").textContent=data.offers.filter(o=>o.status==="Negotiating").length;
+  $("#offerEmpty").style.display=data.offers.length?"none":"block";
+  $("#offerMatrixWrap").style.display=data.offers.length?"block":"none";
+  $("#offerCards").style.display=data.offers.length?"grid":"none";
+  if(!data.offers.length){$("#offerMatrixWrap").innerHTML="";$("#offerCards").innerHTML="";return}
+  const sorted=data.offers.slice().sort((a,b)=>offerScore(b)-offerScore(a));
+  $("#offerMatrixWrap").innerHTML=`<table class="matrix"><thead><tr><th>COMPANY</th><th>ROLE</th><th>SALARY</th><th>WORK STYLE</th><th>DEADLINE</th><th>STATUS</th><th>WEIGHTED SCORE</th></tr></thead><tbody>${sorted.map(o=>`<tr><td><b>${esc(offerCompany(o))}</b></td><td>${esc(offerRole(o))}</td><td>${o.salary?"$"+Number(o.salary).toLocaleString():"—"}</td><td>${esc(o.workStyle||"—")}</td><td>${esc(o.deadline||"—")}</td><td>${esc(o.status||"Received")}</td><td><b>${offerScore(o)}/100</b></td></tr>`).join("")}</tbody></table><div class="meta" style="margin-top:8px">Scores are based on your priorities in Setup.</div>`;
+  $("#offerCards").innerHTML=sorted.map(o=>`<div class="offer-card"><div style="display:flex;justify-content:space-between;gap:12px"><div><div class="offer-company">${esc(offerCompany(o))}</div><div class="meta">${esc(offerRole(o))}</div></div><div class="offer-score">${offerScore(o)}</div></div>
+    <div class="tagrow"><span>${esc(o.status||"Received")}</span>${o.salary?`<span>$${Number(o.salary).toLocaleString()}</span>`:""}${o.deadline?`<span>Deadline ${esc(o.deadline)}</span>`:""}</div>
+    ${o.negotiation?`<div class="meta" style="margin-top:10px"><b>Negotiation:</b> ${esc(o.negotiation)}</div>`:""}
+    <button class="btn ghost edit-offer" data-id="${o.id}" style="margin-top:12px">OPEN / EDIT</button></div>`).join("");
+}
+function openOfferModal(id=null,jobId=null){
+  editingOfferId=id; const o=id?data.offers.find(x=>String(x.id)===String(id)):null; fillJobSelect("#oJob",o?.jobId||jobId||"");
+  $("#offerModalTitle").textContent=o?"Edit offer":"Add offer";
+  const vals={oStatus:o?.status||"Received",oSalary:o?.salary||"",oBonus:o?.bonus||"",oDeadline:o?.deadline||"",oPto:o?.pto||"",oWorkStyle:o?.workStyle||"Remote",oCommute:o?.commute||"",oBenefits:o?.benefits||5,oGrowth:o?.growth||5,oCulture:o?.culture||5,oStability:o?.stability||5,oBalance:o?.balance||5,oImpact:o?.impact||5,oRemoteScore:o?.remoteScore||5,oCompScore:o?.compScore||5,oNegotiation:o?.negotiation||"",oPros:o?.pros||"",oCons:o?.cons||"",oGut:o?.gut||""};
+  Object.entries(vals).forEach(([k,v])=>{$("#"+k).value=v});
+  $("#deleteOffer").style.display=o?"inline-flex":"none";$("#offerModal").classList.add("show");
+}
+function closeOfferModal(){$("#offerModal").classList.remove("show");editingOfferId=null}
+function saveOfferRecord(){
+  const jobId=$("#oJob").value, j=linkedJob(jobId); if(!jobId){toast("Link this offer to a job.");return}
+  const r={id:editingOfferId||Date.now(),jobId,company:j?.company||"",role:j?.role||"",status:$("#oStatus").value,salary:+$("#oSalary").value||0,bonus:+$("#oBonus").value||0,deadline:$("#oDeadline").value,pto:$("#oPto").value.trim(),workStyle:$("#oWorkStyle").value,commute:$("#oCommute").value.trim(),benefits:+$("#oBenefits").value||0,growth:+$("#oGrowth").value||0,culture:+$("#oCulture").value||0,stability:+$("#oStability").value||0,balance:+$("#oBalance").value||0,impact:+$("#oImpact").value||0,remoteScore:+$("#oRemoteScore").value||0,compScore:+$("#oCompScore").value||0,negotiation:$("#oNegotiation").value.trim(),pros:$("#oPros").value.trim(),cons:$("#oCons").value.trim(),gut:$("#oGut").value.trim()};
+  if(editingOfferId){const i=data.offers.findIndex(x=>String(x.id)===String(editingOfferId));if(i>=0)data.offers[i]={...data.offers[i],...r}}else data.offers.unshift(r);
+  if(j&&!["Accepted","Rejected"].includes(j.status))j.status="Offer";
+  save();closeOfferModal();renderAll();showView("offers");toast("Offer saved.");
+}
+
+/* ANALYTICS */
+function renderAnalytics(){
+  const apps=appliedJobs(), n=apps.length;
+  $("#analyticsEmpty").style.display=n?"none":"block";$("#analyticsContent").style.display=n?"block":"none"; if(!n)return;
+  const response=apps.filter(j=>["Screening","Interview","Offer","Accepted","Rejected"].includes(j.status)).length;
+  const interviews=apps.filter(j=>["Interview","Offer","Accepted"].includes(j.status)||data.interviews.some(i=>String(i.jobId)===String(j.id))).length;
+  const offers=apps.filter(j=>["Offer","Accepted"].includes(j.status)||data.offers.some(o=>String(o.jobId)===String(j.id))).length;
+  const pct=x=>Math.round(x/n*100);
+  $("#anApps").textContent=n;$("#anResponse").textContent=pct(response)+"%";$("#anInterview").textContent=pct(interviews)+"%";$("#anOffer").textContent=pct(offers)+"%";
+  const insights=[];
+  insights.push(`You have tracked ${n} application${n===1?"":"s"}.`);
+  insights.push(`${pct(response)}% have produced a response or decision.`);
+  insights.push(`${pct(interviews)}% have reached an interview stage.`);
+  if(offers)insights.push(`${offers} application${offers===1?" has":"s have"} reached offer stage.`);
+  else insights.push(`No offers are recorded yet — this is too early to judge offer conversion.`);
+  $("#analyticsInsights").innerHTML=insights.map(x=>`<div class="insight"><div class="ico">↗</div><div>${esc(x)}</div></div>`).join("");
+  const src={};apps.forEach(j=>{const s=j.source||"Unspecified";src[s]=src[s]||{apps:0,int:0};src[s].apps++;if(["Interview","Offer","Accepted"].includes(j.status))src[s].int++});
+  const max=Math.max(...Object.values(src).map(x=>x.apps),1);
+  $("#sourceAnalytics").innerHTML=Object.entries(src).sort((a,b)=>b[1].apps-a[1].apps).map(([s,x])=>`<div class="analytics-row"><div style="display:flex;justify-content:space-between"><b>${esc(s)}</b><span>${x.apps} app${x.apps===1?"":"s"} · ${x.int} interview+</span></div><div class="analytics-bar"><i style="width:${Math.round(x.apps/max*100)}%"></i></div></div>`).join("");
+}
+
+/* AI */
+function populateAIJobs(){fillJobSelect("#aiJob",$("#aiJob")?.value||"")}
+function buildAIPrompt(){
+  const cat=$("#aiCategory").value, j=linkedJob($("#aiJob").value), s=data.settings, extra=$("#aiExtra").value.trim();
+  const context=j?`Company: ${j.company}\nRole: ${j.role}\nStatus: ${j.status}\nSource: ${j.source||"N/A"}\nJob notes: ${j.notes||"N/A"}\nSalary info: ${j.salary||"N/A"}\nWork style: ${j.workStyle||"N/A"}`:`Target role: ${s.targetTitle||"N/A"}\nPreferred work style: ${s.arrangement||"N/A"}\nMinimum salary: ${s.minSalary||"N/A"}\nIndustries: ${s.industries||"N/A"}`;
+  const asks={
+    resume:"Help me tailor my resume to this opportunity. Identify the most important skills and keywords, explain what I should emphasize, and suggest truthful bullet-point rewrites without inventing experience.",
+    cover:"Draft a concise, specific cover-letter strategy and first draft based on my background and this opportunity. Avoid generic enthusiasm and do not invent facts.",
+    analysis:"Analyze this opportunity for fit. Separate strong matches, possible gaps, questions to investigate, and red flags. Give me a practical recommendation.",
+    interview:"Create an interview prep plan. Give likely questions, what the interviewer is probably testing, STAR-story angles, smart questions to ask, and a concise salary-answer strategy.",
+    networking:"Help me write a natural networking message related to this opportunity. Keep it specific, low-pressure and human.",
+    followup:"Draft a professional follow-up message for this opportunity. Make it warm, concise and confident without sounding pushy.",
+    negotiation:"Help me prepare an offer-negotiation strategy. Identify what to negotiate, give a script, and suggest how to respond to common pushback.",
+    strategy:"Review my current job-search context and suggest the highest-leverage next moves. Prioritize actions instead of giving generic job-search advice."
+  };
+  $("#aiPrompt").value=`You are helping me with my job search.\n\nMY CONTEXT\n${context}\n\nTASK\n${asks[cat]}\n${extra?`\nADDITIONAL INSTRUCTIONS\n${extra}`:""}\n\nImportant: do not invent details that are not provided. Flag missing information clearly.`;
+}
+
+/* WEEKLY */
+function renderWeekly(){
+  $("#weekAppsGoal").textContent=data.settings.goal||0;$("#weekNetGoal").textContent=data.settings.networkGoal||0;
+  const total=data.tasks.length, done=data.tasks.filter(t=>t.done).length;$("#weekDone").textContent=total?Math.round(done/total*100)+"%":"0%";$("#weekOpen").textContent=total-done;
+  $("#weeklyEmpty").style.display=total?"none":"block";$("#weeklyList").style.display=total?"grid":"none";
+  $("#weeklyList").innerHTML=data.tasks.slice().sort((a,b)=>(a.done-b.done)||String(a.due||"9999").localeCompare(String(b.due||"9999"))).map(t=>{
+    const j=linkedJob(t.jobId);
+    return `<div class="task-card ${t.done?"done":""}"><div class="task-check"><input class="toggle-task" data-id="${t.id}" type="checkbox" ${t.done?"checked":""}><div><div class="task-title">${esc(t.title)}</div><div class="task-meta">${esc(t.type||"Task")}${t.due?` · Due ${esc(t.due)}`:""} · ${esc(t.priority||"Medium")} priority${j?` · ${esc(j.company)} — ${esc(j.role)}`:""}</div>${t.notes?`<div class="meta" style="margin-top:7px">${esc(t.notes)}</div>`:""}</div></div><div><button class="btn ghost edit-task" data-id="${t.id}">EDIT</button></div></div>`;
+  }).join("");
+}
+function openTaskModal(id=null){
+  editingTaskId=id;const t=id?data.tasks.find(x=>String(x.id)===String(id)):null;
+  $("#taskModalTitle").textContent=t?"Edit task":"Add task";$("#tTitle").value=t?.title||"";$("#tType").value=t?.type||"Application";$("#tDue").value=t?.due||"";$("#tPriority").value=t?.priority||"Medium";fillJobSelect("#tJob",t?.jobId||"");$("#tNotes").value=t?.notes||"";$("#deleteTask").style.display=t?"inline-flex":"none";$("#taskModal").classList.add("show");
+}
+function closeTaskModal(){$("#taskModal").classList.remove("show");editingTaskId=null}
+function saveTaskRecord(){
+  const title=$("#tTitle").value.trim();if(!title){toast("Task title is required.");return}
+  const r={id:editingTaskId||Date.now(),title,type:$("#tType").value,due:$("#tDue").value,priority:$("#tPriority").value,jobId:$("#tJob").value,notes:$("#tNotes").value.trim(),done:editingTaskId?(data.tasks.find(x=>String(x.id)===String(editingTaskId))?.done||false):false};
+  if(editingTaskId){const i=data.tasks.findIndex(x=>String(x.id)===String(editingTaskId));if(i>=0)data.tasks[i]={...data.tasks[i],...r}}else data.tasks.unshift(r);
+  save();closeTaskModal();renderAll();showView("weekly");toast("Task saved.");
+}
+
+function renderAll(){renderHome();renderSetup();renderDocuments();renderJobs();renderInterviews();renderNetwork();renderOffers();renderAnalytics();populateAIJobs();renderWeekly();}
 const titles={home:["Welcome back","Your job search, prioritized."],jobs:["Jobs","Application Command Center"],interviews:["Interviews","Prep Studio"],network:["Network","Relationship Tracker"],offers:["Offers","Decision Center"],analytics:["Analytics","Search Intelligence"],ai:["AI Toolkit","Personalized prompt builder"],weekly:["Weekly Plan","Your job-search agenda"],documents:["Documents","Resume & Letter Tracker"],setup:["Setup","Personalization Hub"]};
 function showView(id){$$(".view").forEach(v=>v.classList.toggle("active",v.id===id));$$(".nav button").forEach(b=>b.classList.toggle("active",b.dataset.view===id));$("#pageTitle").textContent=titles[id][0];$("#pageSub").textContent=titles[id][1];window.scrollTo({top:0,behavior:"smooth"});}
 $("#nav").onclick=e=>{const b=e.target.closest("button[data-view]");if(b)showView(b.dataset.view)};$$("[data-jump]").forEach(b=>b.onclick=()=>showView(b.dataset.jump));
@@ -934,6 +1255,8 @@ $("#jobStatusFilter").onchange=renderJobs;
 $("#jobsBody").onclick=e=>{
   const ib=e.target.closest(".add-int-from-job");
   if(ib){openInterviewModal(null,ib.dataset.id);return;}
+  const ob=e.target.closest(".add-offer-from-job");
+  if(ob){openOfferModal(null,ob.dataset.id);return;}
   const b=e.target.closest(".edit-job");
   if(b)openJobModal(b.dataset.id);
 };
@@ -947,6 +1270,22 @@ $("#jobsBody").onchange=e=>{
   save();renderAll();toast("Stage updated.");
 };
 
+
+
+$("#addContact").onclick=()=>openContactModal();$("#addFirstContact").onclick=()=>openContactModal();$("#cancelContact").onclick=closeContactModal;$("#saveContact").onclick=saveContactRecord;
+$("#deleteContact").onclick=()=>{if(editingContactId&&confirm("Delete this contact?")){data.network=data.network.filter(x=>String(x.id)!==String(editingContactId));save();closeContactModal();renderAll();showView("network");toast("Contact deleted.")}};
+$("#networkSearch").oninput=renderNetwork;$("#networkStrengthFilter").onchange=renderNetwork;$("#networkList").onclick=e=>{const b=e.target.closest(".edit-contact");if(b)openContactModal(b.dataset.id)};
+
+$("#addOffer").onclick=()=>openOfferModal();$("#addFirstOffer").onclick=()=>openOfferModal();$("#cancelOffer").onclick=closeOfferModal;$("#saveOffer").onclick=saveOfferRecord;
+$("#deleteOffer").onclick=()=>{if(editingOfferId&&confirm("Delete this offer?")){data.offers=data.offers.filter(x=>String(x.id)!==String(editingOfferId));save();closeOfferModal();renderAll();showView("offers");toast("Offer deleted.")}};
+$("#offerCards").onclick=e=>{const b=e.target.closest(".edit-offer");if(b)openOfferModal(b.dataset.id)};
+
+$("#buildPrompt").onclick=buildAIPrompt;$("#copyPrompt").onclick=async()=>{const v=$("#aiPrompt").value;if(!v){toast("Build a prompt first.");return}try{await navigator.clipboard.writeText(v);toast("Prompt copied.")}catch(e){$("#aiPrompt").select();document.execCommand("copy");toast("Prompt copied.")}};
+
+$("#addTask").onclick=()=>openTaskModal();$("#addFirstTask").onclick=()=>openTaskModal();$("#cancelTask").onclick=closeTaskModal;$("#saveTask").onclick=saveTaskRecord;
+$("#deleteTask").onclick=()=>{if(editingTaskId&&confirm("Delete this task?")){data.tasks=data.tasks.filter(x=>String(x.id)!==String(editingTaskId));save();closeTaskModal();renderAll();showView("weekly");toast("Task deleted.")}};
+$("#weeklyList").onclick=e=>{const b=e.target.closest(".edit-task");if(b)openTaskModal(b.dataset.id)};
+$("#weeklyList").onchange=e=>{const c=e.target.closest(".toggle-task");if(!c)return;const t=data.tasks.find(x=>String(x.id)===String(c.dataset.id));if(t){t.done=c.checked;save();renderAll();showView("weekly")}};
 
 $("#addInterview").onclick=()=>openInterviewModal();
 $("#addFirstInterview").onclick=()=>openInterviewModal();
