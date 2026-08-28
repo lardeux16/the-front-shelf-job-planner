@@ -113,6 +113,34 @@ textarea{min-height:90px;resize:vertical}
 .fit-badge{display:inline-grid;place-items:center;min-width:36px;height:26px;border-radius:99px;background:#efe4d4;color:var(--espresso);font-weight:800}
 .overdue{color:var(--danger);font-weight:800}
 
+
+.interview-wizard{width:min(920px,96vw)}
+.interview-scroll{max-height:64vh;overflow:auto}
+.interview-tabs{display:flex;gap:3px;background:#eee3d4;border-bottom:1px solid var(--line);padding:8px 10px 0}
+.interview-tabs button{border:0;background:transparent;padding:10px 14px;font-size:9px;font-weight:900;letter-spacing:1px;color:var(--muted);border-radius:9px 9px 0 0}
+.interview-tabs button.active{background:var(--ivory);color:var(--espresso)}
+.interview-pane{display:none}.interview-pane.active{display:block}
+.interview-countdown{margin-top:8px;color:#d9c7b3;font-size:11px}
+.interview-list{display:grid;gap:12px}
+.interview-card{border:1px solid var(--line);border-radius:15px;background:#fffdf9;padding:17px;display:grid;grid-template-columns:1fr auto;gap:14px}
+.interview-card:hover{box-shadow:0 9px 24px rgba(70,52,38,.07)}
+.interview-company{font-family:Georgia,serif;font-size:20px;color:var(--espresso)}
+.interview-role{font-size:11px;color:var(--muted);margin-top:3px}
+.interview-meta{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+.interview-meta span{font-size:9px;background:#f2e8dc;border:1px solid #e4d7c7;border-radius:999px;padding:6px 8px;color:#5d4b3f}
+.interview-actions{display:flex;align-items:flex-start;gap:7px}
+.interview-actions .btn{padding:8px 10px}
+.countdown-chip{display:inline-flex;align-items:center;border-radius:999px;padding:6px 9px;font-size:9px;font-weight:900;background:#e8ddcd;color:#604a3b;margin-top:9px}
+.countdown-chip.soon{background:#f2dfd5;color:#8a4d43}
+.countdown-chip.done{background:#e5ebe2;color:#53664d}
+.prep-layout{display:grid;grid-template-columns:1fr 220px;gap:18px}
+.prep-checks{display:grid;gap:8px}
+.prep-check{display:flex;align-items:center;gap:9px;border:1px solid var(--line);background:#fffdf9;border-radius:10px;padding:10px}
+.prep-check input{width:auto;margin:0}
+.prep-check span{font-size:10px}
+.prep-score{font:500 38px Georgia,serif;color:var(--espresso);margin:9px 0}
+@media(max-width:700px){.interview-card{grid-template-columns:1fr}.prep-layout{grid-template-columns:1fr}.interview-actions{justify-content:flex-start}}
+
 </style>
 </head>
 <body>
@@ -234,7 +262,44 @@ textarea{min-height:90px;resize:vertical}
           <div class="pipeline" id="jobsPipeline" style="margin-top:12px"></div>
         </div>
       </section>
-      <section class="view" id="interviews"><div class="placeholder"><b>Interview Prep Studio is queued.</b><p>Your existing interview records remain available in browser storage.</p></div></section>
+
+      <section class="view" id="interviews">
+        <div class="card">
+          <div class="card-head">
+            <div>
+              <div class="eyebrow">INTERVIEW PREP STUDIO</div>
+              <h2 style="margin-top:4px">Interviews</h2>
+              <p class="sub">Prepare deeply, stay organized, and keep every interview connected to the job that created it.</p>
+            </div>
+            <button class="btn primary" id="addInterview">+ ADD INTERVIEW</button>
+          </div>
+
+          <div class="kpis">
+            <div class="kpi"><strong id="intUpcoming">0</strong><small>UPCOMING</small></div>
+            <div class="kpi"><strong id="intThisWeek">0</strong><small>THIS WEEK</small></div>
+            <div class="kpi"><strong id="intPrep">0%</strong><small>AVERAGE PREP</small></div>
+            <div class="kpi"><strong id="intFollow">0</strong><small>FOLLOW-UPS DUE</small></div>
+          </div>
+
+          <div class="row" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:16px">
+            <input id="interviewSearch" placeholder="Search company, role, interviewer..." style="flex:1;min-width:220px">
+            <select id="interviewFilter" style="width:180px">
+              <option value="">All interviews</option>
+              <option value="upcoming">Upcoming</option>
+              <option value="completed">Completed</option>
+              <option value="followup">Follow-up due</option>
+            </select>
+          </div>
+
+          <div id="interviewEmpty" class="placeholder" style="margin-top:16px;display:none">
+            <b>No interviews yet.</b>
+            <p>When an opportunity reaches interview stage, create the interview here and keep prep, notes and follow-up together.</p>
+            <button class="btn primary" id="addFirstInterview">ADD MY FIRST INTERVIEW</button>
+          </div>
+
+          <div id="interviewList" class="interview-list" style="margin-top:16px"></div>
+        </div>
+      </section>
       <section class="view" id="network"><div class="placeholder"><b>Relationship Tracker is queued.</b><p>Contacts will connect directly to opportunities and follow-ups.</p></div></section>
       <section class="view" id="offers"><div class="placeholder"><b>Offers Decision Center is queued.</b><p>Weighted comparisons and negotiation tracking come later in V2.</p></div></section>
       <section class="view" id="analytics"><div class="placeholder"><b>Search Intelligence is queued.</b><p>Only real, calculated insights will appear here.</p></div></section>
@@ -296,6 +361,129 @@ textarea{min-height:90px;resize:vertical}
   </main>
 </div>
 
+
+
+<div class="modal" id="interviewModal">
+  <div class="wizard interview-wizard">
+    <div class="wiz-top">
+      <div class="eyebrow" style="color:#d7c3a6">INTERVIEW RECORD</div>
+      <h2 id="interviewModalTitle">Add an interview</h2>
+      <div id="interviewCountdown" class="interview-countdown"></div>
+    </div>
+
+    <div class="interview-tabs" id="interviewTabs">
+      <button class="active" data-itab="details">DETAILS</button>
+      <button data-itab="prep">PREP</button>
+      <button data-itab="after">AFTER INTERVIEW</button>
+    </div>
+
+    <div class="wiz-body interview-scroll">
+      <div class="interview-pane active" data-ipane="details">
+        <div class="form-grid">
+          <label>Linked job
+            <select id="iJob"></select>
+          </label>
+          <label>Interview stage
+            <select id="iStage">
+              <option>Recruiter Screen</option>
+              <option>Hiring Manager</option>
+              <option>First Interview</option>
+              <option>Second Interview</option>
+              <option>Final Interview</option>
+              <option>Panel Interview</option>
+              <option>Technical / Assignment</option>
+              <option>Informational Interview</option>
+            </select>
+          </label>
+          <label>Date<input id="iDate" type="date"></label>
+          <label>Time<input id="iTime" type="time"></label>
+          <label>Format
+            <select id="iFormat"><option>Video</option><option>Phone</option><option>In Person</option><option>Hybrid</option></select>
+          </label>
+          <label>Interviewer<input id="iInterviewer" placeholder="Jordan Lee"></label>
+          <label>Location<input id="iLocation" placeholder="Office address or city"></label>
+          <label>Meeting link<input id="iMeetingLink" placeholder="https://..."></label>
+          <label style="grid-column:1/-1">Company / recruiter research
+            <textarea id="iResearch" placeholder="Company mission, recent news, interviewer background, team structure..."></textarea>
+          </label>
+          <label style="grid-column:1/-1">Focus areas
+            <textarea id="iFocus" placeholder="What do you most want to communicate or clarify?"></textarea>
+          </label>
+          <label style="grid-column:1/-1">Salary / talking points
+            <textarea id="iSalary" placeholder="Target range, must-haves, negotiation notes..."></textarea>
+          </label>
+        </div>
+      </div>
+
+      <div class="interview-pane" data-ipane="prep">
+        <div class="prep-layout">
+          <div>
+            <div class="eyebrow">PREP CHECKLIST</div>
+            <div id="iChecklist" class="prep-checks" style="margin-top:10px"></div>
+          </div>
+          <div>
+            <div class="eyebrow">PREP PROGRESS</div>
+            <div class="prep-score" id="iPrepScore">0%</div>
+            <div class="progress"><i id="iPrepBar" style="width:0%"></i></div>
+          </div>
+        </div>
+
+        <div class="form-grid" style="margin-top:18px">
+          <label style="grid-column:1/-1">Likely interview questions
+            <textarea id="iLikelyQuestions" placeholder="What questions are you expecting?"></textarea>
+          </label>
+          <label style="grid-column:1/-1">Questions I want to ask
+            <textarea id="iMyQuestions" placeholder="Team, priorities, success measures, culture, next steps..."></textarea>
+          </label>
+          <label style="grid-column:1/-1">STAR stories / examples
+            <textarea id="iStarStories" placeholder="Situation → Task → Action → Result examples to use..."></textarea>
+          </label>
+          <label style="grid-column:1/-1">Next action before interview
+            <input id="iNextAction" placeholder="Review portfolio, practice salary answer, research interviewer...">
+          </label>
+        </div>
+      </div>
+
+      <div class="interview-pane" data-ipane="after">
+        <div class="form-grid">
+          <label>Outcome
+            <select id="iOutcome">
+              <option value="">Not recorded</option>
+              <option>Waiting</option><option>Moved Forward</option><option>Offer</option>
+              <option>Rejected</option><option>Withdrawn</option>
+            </select>
+          </label>
+          <label>Follow-up date<input id="iFollowUp" type="date"></label>
+          <label>Thank-you sent?
+            <select id="iThankYou"><option value="false">Not yet</option><option value="true">Yes</option></select>
+          </label>
+          <label>How did it feel?
+            <select id="iFeeling">
+              <option value="">—</option><option>Excellent</option><option>Good</option><option>Mixed</option><option>Not a fit</option>
+            </select>
+          </label>
+          <label style="grid-column:1/-1">What went well?
+            <textarea id="iWentWell" placeholder="Answers, rapport, examples, moments that landed..."></textarea>
+          </label>
+          <label style="grid-column:1/-1">What would I improve?
+            <textarea id="iImprove" placeholder="Anything to tighten before the next round..."></textarea>
+          </label>
+          <label style="grid-column:1/-1">After-interview notes
+            <textarea id="iAfterNotes" placeholder="Important details, concerns, impressions, next steps..."></textarea>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="wiz-actions">
+      <button class="btn ghost" id="cancelInterview">CANCEL</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn danger" id="deleteInterview" style="display:none">DELETE</button>
+        <button class="btn primary" id="saveInterview">SAVE INTERVIEW</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <div class="modal" id="jobModal">
   <div class="wizard" style="width:min(760px,96vw)">
@@ -363,10 +551,10 @@ function renderHome(){
  const s=data.settings;
  $("#greeting").textContent=s.name?`Good morning, ${s.name}.`:"Good morning.";
  $("#heroCopy").textContent=s.targetTitle?`You're building toward ${s.targetTitle}. Here's what deserves your attention today.`:"Here's what deserves your attention today.";
- $("#heroInterview").textContent=`${data.interviews.length} interview${data.interviews.length===1?"":"s"}`;
+ const upcomingHomeInterviews=data.interviews.filter(i=>{const d=interviewDateTime(i);return d&&d>=new Date()&&!i.outcome}).sort((a,b)=>interviewDateTime(a)-interviewDateTime(b)); $("#heroInterview").textContent=`${upcomingHomeInterviews.length} interview${upcomingHomeInterviews.length===1?"":"s"} upcoming`;
  $("#heroFollow").textContent=`${dueFollowups().length} follow-up${dueFollowups().length===1?"":"s"} due`;
  $("#heroApps").textContent=`${appliedJobs().length} applications tracked`;
- $("#kpiActive").textContent=activeJobs().length; $("#kpiInterview").textContent=data.interviews.length; $("#kpiFollow").textContent=dueFollowups().length;
+ $("#kpiActive").textContent=activeJobs().length; $("#kpiInterview").textContent=upcomingHomeInterviews.length; $("#kpiFollow").textContent=dueFollowups().length;
  const goal=Math.max(1,+s.goal||5), apps=appliedJobs().length, ratio=Math.min(1,apps/goal);
  $("#kpiGoal").textContent=Math.round(ratio*100)+"%"; $("#weekPct").textContent=Math.round(ratio*100)+"%"; $("#weekBar").style.width=Math.round(ratio*100)+"%";
  $("#weekStats").innerHTML=`<div style="display:flex;justify-content:space-between"><span>Applications</span><b>${apps} / ${goal}</b></div><div style="display:flex;justify-content:space-between"><span>Networking</span><b>${data.network.length} / ${s.networkGoal||0}</b></div><div style="display:flex;justify-content:space-between"><span>Follow-ups due</span><b>${dueFollowups().length}</b></div>`;
@@ -375,7 +563,7 @@ function renderHome(){
  if(s.setupComplete){
    const fu=dueFollowups()[0];
    if(fu){nextTitle=`Follow up with ${fu.company}`; nextMeta=`This opportunity has a follow-up due. Keep momentum while the application is warm.`; jump="jobs";}
-   else if(data.interviews[0]){nextTitle=`Prepare for ${data.interviews[0].company}`;nextMeta=`You have an interview in your tracker. Prep beats panic.`;jump="interviews";}
+   else if(upcomingHomeInterviews[0]){const ni=upcomingHomeInterviews[0],nj=linkedJobForInterview(ni)||{};nextTitle=`Prepare for ${ni.company||nj.company||"your interview"}`;nextMeta=`${ni.stage||"Interview"} · ${ni.date||"Date TBD"}${ni.time?` at ${ni.time}`:""}. Your prep studio is ready.`;jump="interviews";}
    else{nextTitle="Add your next target opportunity";nextMeta="A focused pipeline gives the rest of the planner something useful to optimize.";jump="jobs";}
  }
  $("#nextTitle").textContent=nextTitle;$("#nextMeta").textContent=nextMeta;$("#nextAction").onclick=()=>showView(jump);
@@ -458,7 +646,7 @@ function renderJobs(){
       <td class="${overdue?"overdue":""}">${esc(j.followUp||"—")}${overdue?" · DUE":""}</td>
       <td>${esc(j.source||"—")}</td>
       <td><span class="fit-badge">${jobFit(j)}</span></td>
-      <td><div class="job-actions">${safeLink?`<a class="job-mini job-link" href="${esc(safeLink)}" target="_blank" rel="noopener">OPEN</a>`:""}<button class="job-mini edit-job" data-id="${j.id}">EDIT</button></div></td>
+      <td><div class="job-actions">${safeLink?`<a class="job-mini job-link" href="${esc(safeLink)}" target="_blank" rel="noopener">OPEN</a>`:""}<button class="job-mini add-int-from-job" data-id="${j.id}">INTERVIEW</button><button class="job-mini edit-job" data-id="${j.id}">EDIT</button></div></td>
     </tr>`
   }).join("") || `<tr><td colspan="8" style="padding:26px;text-align:center;color:var(--muted)">No jobs match this filter.</td></tr>`;
   const stages=["Saved","Applied","Screening","Interview","Offer"];
@@ -504,7 +692,228 @@ function saveJobRecord(){
   save();closeJobModal();renderAll();showView("jobs");toast("Job saved.");
 }
 
-function renderAll(){renderHome();renderSetup();renderDocuments();renderJobs();}
+
+let editingInterviewId=null;
+const INTERVIEW_CHECKS=[
+  ["company","Research company & role"],
+  ["stories","Prepare STAR stories"],
+  ["questions","Prepare questions to ask"],
+  ["logistics","Confirm logistics / meeting link"],
+  ["salary","Review salary talking points"],
+  ["practice","Practice key answers"]
+];
+
+function interviewDateTime(i){
+  if(!i?.date)return null;
+  const time=i.time||"23:59";
+  const d=new Date(`${i.date}T${time}`);
+  return Number.isNaN(d.getTime())?null:d;
+}
+function interviewPrepPercent(i){
+  const prep=i?.prep||{};
+  const done=INTERVIEW_CHECKS.filter(([k])=>prep[k]).length;
+  return Math.round(done/INTERVIEW_CHECKS.length*100);
+}
+function interviewIsCompleted(i){
+  const dt=interviewDateTime(i);
+  return !!(i?.outcome || (dt && dt<new Date()));
+}
+function interviewFollowupDue(i){
+  return !!(i.followUp && i.followUp<=todayISO() && !["Offer","Rejected","Withdrawn"].includes(i.outcome||"") && i.thankYou!==true);
+}
+function daysUntilInterview(i){
+  if(!i?.date)return null;
+  const target=new Date(`${i.date}T00:00:00`);
+  const now=new Date(); now.setHours(0,0,0,0);
+  return Math.ceil((target-now)/86400000);
+}
+function interviewCountdownLabel(i){
+  const d=daysUntilInterview(i);
+  if(d===null)return "DATE NOT SET";
+  if(d<0)return "COMPLETED";
+  if(d===0)return "TODAY";
+  if(d===1)return "TOMORROW";
+  return `${d} DAYS`;
+}
+function linkedJobForInterview(i){
+  return data.jobs.find(j=>String(j.id)===String(i.jobId));
+}
+function renderInterviews(){
+  const q=($("#interviewSearch")?.value||"").trim().toLowerCase();
+  const filter=$("#interviewFilter")?.value||"";
+  const now=new Date();
+  const upcoming=data.interviews.filter(i=>{const d=interviewDateTime(i);return d&&d>=now&&!i.outcome});
+  const weekEnd=new Date(); weekEnd.setDate(weekEnd.getDate()+7);
+  const thisWeek=upcoming.filter(i=>interviewDateTime(i)<=weekEnd);
+  const avg=data.interviews.length?Math.round(data.interviews.reduce((s,i)=>s+interviewPrepPercent(i),0)/data.interviews.length):0;
+  const follow=data.interviews.filter(interviewFollowupDue);
+
+  $("#intUpcoming").textContent=upcoming.length;
+  $("#intThisWeek").textContent=thisWeek.length;
+  $("#intPrep").textContent=avg+"%";
+  $("#intFollow").textContent=follow.length;
+
+  const list=data.interviews
+    .slice()
+    .sort((a,b)=>{
+      const ad=interviewDateTime(a)?.getTime()||Infinity, bd=interviewDateTime(b)?.getTime()||Infinity;
+      const ac=interviewIsCompleted(a), bc=interviewIsCompleted(b);
+      if(ac!==bc)return ac?1:-1;
+      return ad-bd;
+    })
+    .filter(i=>{
+      const j=linkedJobForInterview(i)||{};
+      const hay=[i.company,i.role,i.interviewer,i.stage,j.company,j.role].join(" ").toLowerCase();
+      if(q&&!hay.includes(q))return false;
+      if(filter==="upcoming"&&interviewIsCompleted(i))return false;
+      if(filter==="completed"&&!interviewIsCompleted(i))return false;
+      if(filter==="followup"&&!interviewFollowupDue(i))return false;
+      return true;
+    });
+
+  $("#interviewEmpty").style.display=data.interviews.length?"none":"block";
+  $("#interviewList").style.display=data.interviews.length?"grid":"none";
+
+  $("#interviewList").innerHTML=list.map(i=>{
+    const job=linkedJobForInterview(i)||{};
+    const company=i.company||job.company||"Company";
+    const role=i.role||job.role||"Role";
+    const prep=interviewPrepPercent(i);
+    const d=daysUntilInterview(i);
+    const chipClass=d!==null&&d<0?"done":(d!==null&&d<=2?"soon":"");
+    const safeLink=i.meetingLink&&/^https?:\/\//i.test(i.meetingLink)?i.meetingLink:"";
+    return `<div class="interview-card">
+      <div>
+        <div class="interview-company">${esc(company)}</div>
+        <div class="interview-role">${esc(role)} · ${esc(i.stage||"Interview")}</div>
+        <div class="countdown-chip ${chipClass}">${interviewCountdownLabel(i)}</div>
+        <div class="interview-meta">
+          <span>▦ ${esc(i.date||"Date TBD")}${i.time?` · ${esc(i.time)}`:""}</span>
+          <span>${esc(i.format||"Format TBD")}</span>
+          ${i.interviewer?`<span>Interviewer: ${esc(i.interviewer)}</span>`:""}
+          <span>Prep ${prep}%</span>
+          ${i.thankYou===true?`<span>✓ Thank-you sent</span>`:""}
+          ${i.outcome?`<span>${esc(i.outcome)}</span>`:""}
+        </div>
+        ${i.nextAction?`<div class="meta" style="margin-top:10px"><b>Next:</b> ${esc(i.nextAction)}</div>`:""}
+      </div>
+      <div class="interview-actions">
+        ${safeLink?`<a class="btn soft" href="${esc(safeLink)}" target="_blank" rel="noopener" style="text-decoration:none">JOIN</a>`:""}
+        <button class="btn ghost edit-interview" data-id="${i.id}">OPEN / EDIT</button>
+      </div>
+    </div>`;
+  }).join("") || `<div class="placeholder"><b>No interviews match this filter.</b><p>Try another search or filter.</p></div>`;
+}
+
+function populateInterviewJobs(selectedId=""){
+  const options=data.jobs
+    .filter(j=>!["Rejected","Withdrawn"].includes(j.status) || String(j.id)===String(selectedId))
+    .map(j=>`<option value="${j.id}" ${String(j.id)===String(selectedId)?"selected":""}>${esc(j.company)} — ${esc(j.role)}</option>`)
+    .join("");
+  $("#iJob").innerHTML=`<option value="">Choose a linked job...</option>${options}`;
+}
+function renderInterviewChecklist(prep={}){
+  $("#iChecklist").innerHTML=INTERVIEW_CHECKS.map(([k,label])=>`
+    <label class="prep-check"><input type="checkbox" data-prep="${k}" ${prep[k]?"checked":""}><span>${label}</span></label>
+  `).join("");
+  updateInterviewPrepPreview();
+}
+function updateInterviewPrepPreview(){
+  const checks=$$("#iChecklist [data-prep]");
+  const pct=checks.length?Math.round(checks.filter(x=>x.checked).length/checks.length*100):0;
+  $("#iPrepScore").textContent=pct+"%";
+  $("#iPrepBar").style.width=pct+"%";
+}
+function setInterviewTab(name){
+  $$("#interviewTabs [data-itab]").forEach(b=>b.classList.toggle("active",b.dataset.itab===name));
+  $$(".interview-pane").forEach(p=>p.classList.toggle("active",p.dataset.ipane===name));
+}
+function openInterviewModal(id=null,jobId=null){
+  editingInterviewId=id;
+  const i=id?data.interviews.find(x=>String(x.id)===String(id)):null;
+  const linkedId=i?.jobId||jobId||"";
+  populateInterviewJobs(linkedId);
+  $("#interviewModalTitle").textContent=i?"Edit interview":"Add an interview";
+  $("#iStage").value=i?.stage||"First Interview";
+  $("#iDate").value=i?.date||"";
+  $("#iTime").value=i?.time||"";
+  $("#iFormat").value=i?.format||"Video";
+  $("#iInterviewer").value=i?.interviewer||"";
+  $("#iLocation").value=i?.location||"";
+  $("#iMeetingLink").value=i?.meetingLink||"";
+  $("#iResearch").value=i?.research||"";
+  $("#iFocus").value=i?.focus||"";
+  $("#iSalary").value=i?.salaryTalkingPoints||"";
+  $("#iLikelyQuestions").value=i?.likelyQuestions||"";
+  $("#iMyQuestions").value=i?.myQuestions||"";
+  $("#iStarStories").value=i?.starStories||"";
+  $("#iNextAction").value=i?.nextAction||"";
+  $("#iOutcome").value=i?.outcome||"";
+  $("#iFollowUp").value=i?.followUp||"";
+  $("#iThankYou").value=i?.thankYou===true?"true":"false";
+  $("#iFeeling").value=i?.feeling||"";
+  $("#iWentWell").value=i?.wentWell||"";
+  $("#iImprove").value=i?.improve||"";
+  $("#iAfterNotes").value=i?.afterNotes||"";
+  renderInterviewChecklist(i?.prep||{});
+  $("#deleteInterview").style.display=i?"inline-flex":"none";
+  $("#interviewCountdown").textContent=i?interviewCountdownLabel(i):"";
+  setInterviewTab("details");
+  $("#interviewModal").classList.add("show");
+}
+function closeInterviewModal(){
+  $("#interviewModal").classList.remove("show");
+  editingInterviewId=null;
+}
+function saveInterviewRecord(){
+  const jobId=$("#iJob").value;
+  const linked=data.jobs.find(j=>String(j.id)===String(jobId));
+  if(!jobId&&!$("#iDate").value){toast("Link a job or add an interview date.");return}
+  const prep={}; $$("#iChecklist [data-prep]").forEach(x=>prep[x.dataset.prep]=x.checked);
+  const record={
+    id:editingInterviewId||Date.now(),
+    jobId:jobId||"",
+    company:linked?.company||"",
+    role:linked?.role||"",
+    stage:$("#iStage").value,
+    date:$("#iDate").value,
+    time:$("#iTime").value,
+    format:$("#iFormat").value,
+    interviewer:$("#iInterviewer").value.trim(),
+    location:$("#iLocation").value.trim(),
+    meetingLink:$("#iMeetingLink").value.trim(),
+    research:$("#iResearch").value.trim(),
+    focus:$("#iFocus").value.trim(),
+    salaryTalkingPoints:$("#iSalary").value.trim(),
+    likelyQuestions:$("#iLikelyQuestions").value.trim(),
+    myQuestions:$("#iMyQuestions").value.trim(),
+    starStories:$("#iStarStories").value.trim(),
+    nextAction:$("#iNextAction").value.trim(),
+    prep,
+    outcome:$("#iOutcome").value,
+    followUp:$("#iFollowUp").value,
+    thankYou:$("#iThankYou").value==="true",
+    feeling:$("#iFeeling").value,
+    wentWell:$("#iWentWell").value.trim(),
+    improve:$("#iImprove").value.trim(),
+    afterNotes:$("#iAfterNotes").value.trim()
+  };
+  if(editingInterviewId){
+    const idx=data.interviews.findIndex(x=>String(x.id)===String(editingInterviewId));
+    if(idx>=0)data.interviews[idx]={...data.interviews[idx],...record};
+  }else data.interviews.unshift(record);
+
+  if(linked && !["Offer","Rejected","Accepted"].includes(linked.status)){
+    linked.status="Interview";
+  }
+  save();
+  closeInterviewModal();
+  renderAll();
+  showView("interviews");
+  toast("Interview saved.");
+}
+
+function renderAll(){renderHome();renderSetup();renderDocuments();renderJobs();renderInterviews();}
 const titles={home:["Welcome back","Your job search, prioritized."],jobs:["Jobs","Application Command Center"],interviews:["Interviews","Prep Studio"],network:["Network","Relationship Tracker"],offers:["Offers","Decision Center"],analytics:["Analytics","Search Intelligence"],ai:["AI Toolkit","Personalized prompt builder"],weekly:["Weekly Plan","Your job-search agenda"],documents:["Documents","Resume & Letter Tracker"],setup:["Setup","Personalization Hub"]};
 function showView(id){$$(".view").forEach(v=>v.classList.toggle("active",v.id===id));$$(".nav button").forEach(b=>b.classList.toggle("active",b.dataset.view===id));$("#pageTitle").textContent=titles[id][0];$("#pageSub").textContent=titles[id][1];window.scrollTo({top:0,behavior:"smooth"});}
 $("#nav").onclick=e=>{const b=e.target.closest("button[data-view]");if(b)showView(b.dataset.view)};$$("[data-jump]").forEach(b=>b.onclick=()=>showView(b.dataset.jump));
@@ -523,6 +932,8 @@ $("#deleteJob").onclick=()=>{
 $("#jobSearch").oninput=renderJobs;
 $("#jobStatusFilter").onchange=renderJobs;
 $("#jobsBody").onclick=e=>{
+  const ib=e.target.closest(".add-int-from-job");
+  if(ib){openInterviewModal(null,ib.dataset.id);return;}
   const b=e.target.closest(".edit-job");
   if(b)openJobModal(b.dataset.id);
 };
@@ -535,6 +946,30 @@ $("#jobsBody").onchange=e=>{
   if(j.status==="Applied"&&!j.dateApplied)j.dateApplied=todayISO();
   save();renderAll();toast("Stage updated.");
 };
+
+
+$("#addInterview").onclick=()=>openInterviewModal();
+$("#addFirstInterview").onclick=()=>openInterviewModal();
+$("#cancelInterview").onclick=closeInterviewModal;
+$("#saveInterview").onclick=saveInterviewRecord;
+$("#deleteInterview").onclick=()=>{
+  if(!editingInterviewId)return;
+  if(confirm("Delete this interview from your planner?")){
+    data.interviews=data.interviews.filter(x=>String(x.id)!==String(editingInterviewId));
+    save();closeInterviewModal();renderAll();showView("interviews");toast("Interview deleted.");
+  }
+};
+$("#interviewSearch").oninput=renderInterviews;
+$("#interviewFilter").onchange=renderInterviews;
+$("#interviewList").onclick=e=>{
+  const b=e.target.closest(".edit-interview");
+  if(b)openInterviewModal(b.dataset.id);
+};
+$("#interviewTabs").onclick=e=>{
+  const b=e.target.closest("[data-itab]");
+  if(b)setInterviewTab(b.dataset.itab);
+};
+$("#iChecklist").onchange=e=>{if(e.target.matches("[data-prep]"))updateInterviewPrepPreview();};
 
 $("#exportData").onclick=()=>{const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="the-front-shelf-backup.json";a.click();URL.revokeObjectURL(a.href)};
 $("#importData").onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{data=JSON.parse(r.result);save();location.reload()}catch(err){toast("That backup file couldn't be read.")}};r.readAsText(f)};
