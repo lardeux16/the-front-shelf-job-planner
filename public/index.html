@@ -1384,7 +1384,17 @@ function renderHome(){
    else if(upcomingHomeInterviews[0]){const ni=upcomingHomeInterviews[0],nj=linkedJobForInterview(ni)||{};nextTitle=`Prepare for ${ni.company||nj.company||"your interview"}`;nextMeta=`${ni.stage||"Interview"} · ${ni.date||"Date TBD"}${ni.time?` at ${ni.time}`:""}. Your prep studio is ready.`;jump="interviews";}
    else{nextTitle="Add your next target opportunity";nextMeta="A focused pipeline gives the rest of the planner something useful to optimize.";jump="jobs";}
  }
- $("#nextTitle").textContent=nextTitle;$("#nextMeta").textContent=nextMeta;$("#nextAction").onclick=()=>showView(jump);
+ $("#nextTitle").textContent=nextTitle;$("#nextMeta").textContent=nextMeta;
+ const nextBtn=$("#nextAction");
+ nextBtn.onclick=()=>{
+   if(jump==="setup"){
+     showView("setup");
+     if(typeof openWizard==="function") openWizard();
+     else $("#openWizard")?.click();
+   }else{
+     showView(jump);
+   }
+ };
  const insights=[];
  if(!data.jobs.length) insights.push(["✦","Add your first opportunity","Your analytics and Fit Scores become useful as soon as you start tracking jobs."]);
  if(dueFollowups().length) insights.push(["!","Follow-up window","You have "+dueFollowups().length+" follow-up"+(dueFollowups().length===1?"":"s")+" due."]);
