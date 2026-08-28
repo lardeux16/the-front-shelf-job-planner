@@ -176,6 +176,19 @@ textarea{min-height:90px;resize:vertical}
 .demo-badge{display:inline-flex;border:1px solid rgba(215,195,166,.5);border-radius:999px;padding:7px 10px;color:#e7d8c5;font-size:9px;letter-spacing:1px;margin-top:10px}
 @media(max-width:700px){.launch-steps{grid-template-columns:1fr}.first-launch-hero,.launch-body{padding:24px}.first-launch-hero h2{font-size:28px}}
 
+
+/* EMPTY STATES + DEMO MODE */
+.empty-guide{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin:16px auto 18px;max-width:720px;text-align:left}
+.empty-guide div{background:#fffdf9;border:1px solid var(--line);border-radius:11px;padding:12px}
+.empty-guide b{font-family:inherit!important;font-size:10px!important;letter-spacing:.5px;display:block!important}
+.empty-guide small{font-size:9px;color:var(--muted);line-height:1.45;display:block;margin-top:5px}
+.demo-panel{border:1px solid #d9c7b1;background:#efe4d4;border-radius:14px;padding:16px;margin-top:14px}
+.demo-panel-head{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.demo-panel p{font-size:10px;color:var(--muted);line-height:1.55;margin:7px 0 0}
+.demo-ribbon{position:fixed;right:18px;top:16px;z-index:140;background:var(--espresso);color:white;border:1px solid rgba(255,255,255,.15);border-radius:999px;padding:8px 11px;font-size:8px;font-weight:900;letter-spacing:1px;display:none;box-shadow:0 8px 25px rgba(0,0,0,.16)}
+.demo-ribbon.show{display:block}
+@media(max-width:700px){.empty-guide{grid-template-columns:1fr}}
+
 </style>
 </head>
 <body>
@@ -329,6 +342,7 @@ textarea{min-height:90px;resize:vertical}
           <div id="interviewEmpty" class="placeholder" style="margin-top:16px;display:none">
             <b>No interviews yet.</b>
             <p>When an opportunity reaches interview stage, create the interview here and keep prep, notes and follow-up together.</p>
+            <div class="empty-guide"><div><b>LINK A JOB</b><small>Choose the opportunity this interview belongs to.</small></div><div><b>PREP IN ONE PLACE</b><small>Questions, STAR stories, research and salary notes stay together.</small></div><div><b>FOLLOW THROUGH</b><small>Track thank-yous, outcomes and the next round.</small></div></div>
             <button class="btn primary" id="addFirstInterview">ADD MY FIRST INTERVIEW</button>
           </div>
 
@@ -352,7 +366,7 @@ textarea{min-height:90px;resize:vertical}
             <input id="networkSearch" placeholder="Search name, company, role..." style="flex:1;min-width:220px">
             <select id="networkStrengthFilter" style="width:170px"><option value="">All strengths</option><option>Cold</option><option>Neutral</option><option>Warm</option><option>Strong</option></select>
           </div>
-          <div id="networkEmpty" class="placeholder" style="margin-top:16px;display:none"><b>No contacts yet.</b><p>Add recruiters, hiring managers, peers and referrals here.</p><button class="btn primary" id="addFirstContact">ADD MY FIRST CONTACT</button></div>
+          <div id="networkEmpty" class="placeholder" style="margin-top:16px;display:none"><b>No contacts yet.</b><p>Add recruiters, hiring managers, peers and referrals here.</p><div class="empty-guide"><div><b>WHO</b><small>Recruiters, hiring managers, referrals and useful professional contacts.</small></div><div><b>CONTEXT</b><small>Link a person to a job so you remember why the relationship matters.</small></div><div><b>NEXT TOUCH</b><small>Set a follow-up date so good conversations do not disappear.</small></div></div><button class="btn primary" id="addFirstContact">ADD MY FIRST CONTACT</button></div>
           <div id="networkList" class="network-list" style="margin-top:16px"></div>
         </div>
       </section>
@@ -369,7 +383,7 @@ textarea{min-height:90px;resize:vertical}
             <div class="kpi"><strong id="offerDeadlines">0</strong><small>DEADLINES ≤ 7 DAYS</small></div>
             <div class="kpi"><strong id="offerNegotiating">0</strong><small>NEGOTIATING</small></div>
           </div>
-          <div id="offerEmpty" class="placeholder" style="margin-top:16px;display:none"><b>No offers yet.</b><p>When an offer arrives, add it here and compare it against what actually matters to you.</p><button class="btn primary" id="addFirstOffer">ADD MY FIRST OFFER</button></div>
+          <div id="offerEmpty" class="placeholder" style="margin-top:16px;display:none"><b>No offers yet.</b><p>When an offer arrives, add it here and compare it against what actually matters to you.</p><div class="empty-guide"><div><b>CAPTURE THE PACKAGE</b><small>Salary, bonus, benefits, flexibility, PTO and deadline.</small></div><div><b>SCORE YOUR PRIORITIES</b><small>Your Setup weights turn the details into a personalized comparison.</small></div><div><b>DECIDE WITH CONTEXT</b><small>Keep negotiation notes, pros, cons and your gut check together.</small></div></div><button class="btn primary" id="addFirstOffer">ADD MY FIRST OFFER</button></div>
           <div id="offerMatrixWrap" style="margin-top:16px;overflow:auto"></div>
           <div id="offerCards" class="offer-cards" style="margin-top:16px"></div>
         </div>
@@ -444,7 +458,7 @@ textarea{min-height:90px;resize:vertical}
             <div class="kpi"><strong id="weekDone">0%</strong><small>TASKS COMPLETE</small></div>
             <div class="kpi"><strong id="weekOpen">0</strong><small>OPEN TASKS</small></div>
           </div>
-          <div id="weeklyEmpty" class="placeholder" style="margin-top:16px;display:none"><b>Your week is clear.</b><p>Add a task or use the planner naturally — follow-ups and interview prep can be reflected here too.</p><button class="btn primary" id="addFirstTask">ADD A TASK</button></div>
+          <div id="weeklyEmpty" class="placeholder" style="margin-top:16px;display:none"><b>Your week is clear.</b><p>Add a task or use the planner naturally — follow-ups and interview prep can be reflected here too.</p><div class="empty-guide"><div><b>PLAN</b><small>Add only the actions that genuinely move your search forward.</small></div><div><b>CONNECT</b><small>Link tasks to jobs so your week stays grounded in real opportunities.</small></div><div><b>FINISH</b><small>Check things off and keep the plan useful — not guilt-inducing.</small></div></div><button class="btn primary" id="addFirstTask">ADD A TASK</button></div>
           <div id="weeklyList" class="weekly-list" style="margin-top:16px"></div>
         </div>
       </section>
@@ -496,7 +510,18 @@ textarea{min-height:90px;resize:vertical}
 
           <aside>
             <article class="card"><div class="eyebrow">SETUP SUMMARY</div><h3 style="margin-top:4px">What powers your planner</h3><div id="summary" style="display:grid;gap:11px;margin-top:14px"></div></article>
-            <article class="card" style="margin-top:14px"><div class="eyebrow">YOUR DATA</div><h3 style="margin-top:4px">Local & portable</h3><p class="sub">This planner stores data in this browser. Export a backup before clearing browser data or moving devices.</p><div class="data-actions"><button class="btn primary" id="exportData">EXPORT BACKUP</button><label class="btn soft" style="text-align:center">IMPORT BACKUP<input id="importData" type="file" accept=".json" hidden></label><button class="btn danger" id="resetData">RESET PLANNER</button></div></article>
+            <article class="card" style="margin-top:14px"><div class="eyebrow">YOUR DATA</div><h3 style="margin-top:4px">Local & portable</h3><p class="sub">This planner stores data in this browser. Export a backup before clearing browser data or moving devices.</p>
+<div class="demo-panel">
+  <div class="demo-panel-head">
+    <div><div class="eyebrow">EXPLORE WITH SAMPLE DATA</div><p>Want to see how the connected planner behaves before entering your own search? Load a small fictional example. Your current planner will be backed up in this browser first.</p></div>
+    <button class="btn soft" id="loadDemo">LOAD DEMO</button>
+  </div>
+  <div id="demoRestoreRow" style="display:none;margin-top:10px">
+    <button class="btn ghost" id="restoreBeforeDemo">RESTORE MY PRE-DEMO DATA</button>
+  </div>
+</div>
+
+<div class="data-actions"><button class="btn primary" id="exportData">EXPORT BACKUP</button><label class="btn soft" style="text-align:center">IMPORT BACKUP<input id="importData" type="file" accept=".json" hidden></label><button class="btn danger" id="resetData">RESET PLANNER</button></div></article>
           </aside>
         </div>
       </section>
@@ -715,6 +740,7 @@ textarea{min-height:90px;resize:vertical}
   </div>
 </div>
 
+<div class="demo-ribbon" id="demoRibbon">DEMO DATA ACTIVE</div>
 <div class="first-launch" id="firstLaunch">
   <div class="first-launch-card">
     <div class="first-launch-hero">
@@ -1400,7 +1426,59 @@ function finishFirstLaunch(goSetup){
 $("#startLaunch").onclick=()=>finishFirstLaunch(true);
 $("#exploreLaunch").onclick=()=>finishFirstLaunch(false);
 
+
+const DEMO_BACKUP_KEY="frontShelfJobSearchSystemV1_preDemoBackup";
+const DEMO_FLAG_KEY="frontShelfJobSearchSystemV1_demoActive";
+function demoData(){
+  const now=new Date(), iso=d=>d.toISOString().slice(0,10), plus=n=>{const d=new Date();d.setDate(d.getDate()+n);return iso(d)};
+  return {
+    jobs:[
+      {id:91001,company:"Northstar Media",role:"Content Researcher",status:"Interview",source:"LinkedIn",dateApplied:plus(-6),followUp:plus(2),salary:"65000–75000",workStyle:"Remote",link:"",notes:"Research-heavy role supporting documentary and digital content."},
+      {id:91002,company:"Greenwell Studio",role:"Research Coordinator",status:"Applied",source:"Company Website",dateApplied:plus(-3),followUp:plus(3),salary:"60000–70000",workStyle:"Hybrid",link:"",notes:"Strong fit for organization, verification and research workflow."},
+      {id:91003,company:"North & Co.",role:"Content Operations Assistant",status:"Saved",source:"Indeed",dateApplied:"",followUp:"",salary:"58000–68000",workStyle:"Remote",link:"",notes:"Worth reviewing before applying."}
+    ],
+    interviews:[
+      {id:92001,jobId:"91001",company:"Northstar Media",role:"Content Researcher",stage:"First Interview",date:plus(2),time:"10:30",format:"Video",interviewer:"Jordan Lee",location:"",meetingLink:"",research:"Review recent documentary projects and editorial standards.",focus:"Research process, source verification and organization.",salaryTalkingPoints:"Target range based on posted compensation.",likelyQuestions:"Tell us about your research process.\nHow do you verify conflicting information?",myQuestions:"How is research handed off to writers/producers?\nWhat does success look like in 90 days?",starStories:"Prepare one example about investigating an issue and one about training/explaining complex information.",nextAction:"Practice two STAR stories",prep:{company:true,stories:true,questions:true,logistics:false,salary:false,practice:false},outcome:"",followUp:"",thankYou:false,feeling:"",wentWell:"",improve:"",afterNotes:""}
+    ],
+    network:[
+      {id:93001,name:"Jordan Lee",company:"Northstar Media",role:"Recruiter",strength:"Warm",email:"",jobId:"91001",lastInteraction:plus(-2),followUp:plus(4),notes:"Initial screening conversation was positive."}
+    ],
+    offers:[],
+    tasks:[
+      {id:94001,title:"Practice Northstar STAR stories",type:"Interview Prep",due:plus(1),priority:"High",jobId:"91001",notes:"Focus on research verification and explaining complex information.",done:false},
+      {id:94002,title:"Follow up with Greenwell Studio",type:"Follow-Up",due:plus(3),priority:"Medium",jobId:"91002",notes:"Keep it short and specific.",done:false}
+    ]
+  };
+}
+function loadDemoMode(){
+  if(localStorage.getItem(DEMO_FLAG_KEY)){toast("Demo data is already active.");return}
+  if(!confirm("Load fictional sample data? Your current planner will be saved in this browser so you can restore it afterward."))return;
+  localStorage.setItem(DEMO_BACKUP_KEY,JSON.stringify(data));
+  const d=demoData();
+  data.jobs=d.jobs; data.interviews=d.interviews; data.network=d.network; data.offers=d.offers; data.tasks=d.tasks;
+  localStorage.setItem(DEMO_FLAG_KEY,"1"); save(); renderAll(); updateDemoUI(); showView("home"); toast("Demo data loaded.");
+}
+function restorePreDemo(){
+  const raw=localStorage.getItem(DEMO_BACKUP_KEY); if(!raw){toast("No pre-demo backup was found.");return}
+  if(!confirm("Restore the planner exactly as it was before demo mode?"))return;
+  try{
+    const restored=JSON.parse(raw);
+    Object.keys(data).forEach(k=>delete data[k]); Object.assign(data,restored);
+    save(); localStorage.removeItem(DEMO_FLAG_KEY); localStorage.removeItem(DEMO_BACKUP_KEY);
+    renderAll(); updateDemoUI(); showView("home"); toast("Your planner has been restored.");
+  }catch(e){toast("That demo backup could not be restored.");}
+}
+function updateDemoUI(){
+  const active=!!localStorage.getItem(DEMO_FLAG_KEY);
+  if($("#demoRibbon"))$("#demoRibbon").classList.toggle("show",active);
+  if($("#demoRestoreRow"))$("#demoRestoreRow").style.display=active?"block":"none";
+  if($("#loadDemo"))$("#loadDemo").textContent=active?"DEMO ACTIVE":"LOAD DEMO";
+}
+if($("#loadDemo"))$("#loadDemo").onclick=loadDemoMode;
+if($("#restoreBeforeDemo"))$("#restoreBeforeDemo").onclick=restorePreDemo;
+
 renderAll();
+updateDemoUI();
 showFirstLaunchIfNeeded();
 if(!data.settings.wizardSeen && !raw) setTimeout(openWizard,350);
 </script>
