@@ -716,13 +716,6 @@ input,select,textarea{font-size:16px} /* prevents iOS auto-zoom */
 }
 
 
-.priority-editor{display:grid;gap:12px}
-.priority-edit-row{display:grid;grid-template-columns:190px 1fr;gap:14px;align-items:center;padding:10px 12px;background:#fffdf9;border:1px solid var(--line);border-radius:10px}
-.priority-edit-row label{display:flex;justify-content:space-between;gap:10px;align-items:center;font-size:10px;font-weight:800;color:var(--espresso)}
-.priority-edit-row label b{font-size:10px;color:var(--mocha)}
-.priority-edit-row input[type="range"]{width:100%;accent-color:var(--mocha);cursor:pointer}
-#weightTotal.bad{color:var(--danger)}
-@media(max-width:700px){.priority-edit-row{grid-template-columns:1fr;gap:7px}}
 
 </style>
 </head>
@@ -1419,7 +1412,7 @@ function renderSetup(){
  $("#summary").innerHTML=`<div><small class="eyebrow">PRIMARY ROLE</small><b style="display:block;margin-top:4px">${s.targetTitle||"Not set"}</b></div><div><small class="eyebrow">SALARY FLOOR</small><b style="display:block;margin-top:4px">${s.minSalary?"$"+Number(s.minSalary).toLocaleString()+"+":"Not set"}</b></div><div><small class="eyebrow">WORK STYLE</small><b style="display:block;margin-top:4px">${s.arrangement||"Not set"}</b></div><div><small class="eyebrow">FOCUS DAYS</small><b style="display:block;margin-top:4px">${dayNames.filter((d,i)=>s.searchDays[i]).join(", ")||"Not set"}</b></div>`;
 }
 function updateWeightTotal(){
- const total=$$("#weights input[data-weight]").reduce((a,x)=>a+(+x.value||0),0), el=$("#weightTotal"); el.querySelector("b").textContent=total+"%";el.classList.toggle("bad",total!==100); return total;
+ const total=$$("#weights input[data-weight]").reduce((a,x)=>a+(+x.value||0),0), el=$("#weightTotal"); const out=el?.querySelector("b"); if(out)out.textContent=total+"%"; if(el)el.classList.toggle("bad",total!==100); return total;
 }
 function collectSetup(){
  const s=data.settings; s.name=$("#sName").value.trim();s.location=$("#sLocation").value.trim();s.targetTitle=$("#sRole").value.trim();s.experience=$("#sExp").value;s.minSalary=+$("#sSalary").value||0;s.arrangement=$("#sStyle").value;s.goal=+$("#sGoal").value||5;s.networkGoal=+$("#sNetwork").value||0;s.followGoal=+$("#sFollow").value||0;s.industries=$("#sIndustries").value.trim();
@@ -1944,57 +1937,8 @@ showView=function(id){
 }
 
 
-/* EDITABLE JOB PRIORITIES — torture-test fix */
-const PRIORITY_CONTROLS={
-  "Work-Life Balance":"p-balance",
-  "Growth & Learning":"p-growth",
-  "Compensation":"p-comp",
-  "Company Culture":"p-culture",
-  "Remote Flexibility":"p-remote",
-  "Job Stability":"p-stability",
-  "Impact & Purpose":"p-impact"
-};
-function syncPriorityEditorFromData(){
-  const pri=data.settings.priorities||{};
-  Object.entries(PRIORITY_CONTROLS).forEach(([name,id])=>{
-    const el=$("#"+id); if(!el)return;
-    if(pri[name]!==undefined) el.value=Number(pri[name])||0;
-  });
-  updatePriorityEditor();
-}
-function updatePriorityEditor(){
-  const map={
-    "p-balance":"pv-balance","p-growth":"pv-growth","p-comp":"pv-comp","p-culture":"pv-culture",
-    "p-remote":"pv-remote","p-stability":"pv-stability","p-impact":"pv-impact"
-  };
-  let total=0;
-  Object.entries(map).forEach(([id,vid])=>{
-    const el=$("#"+id); if(!el)return;
-    const v=Number(el.value)||0; total+=v;
-    if($("#"+vid))$("#"+vid).textContent=v+"%";
-  });
-  if($("#weightTotal")){
-    $("#weightTotal").textContent=total+"%";
-    $("#weightTotal").classList.toggle("bad",total!==100);
-  }
-  return total;
-}
-Object.values(PRIORITY_CONTROLS).forEach(id=>{
-  $("#"+id)?.addEventListener("input",updatePriorityEditor);
-  $("#"+id)?.addEventListener("change",()=>{
-    const total=updatePriorityEditor();
-    const pri={};
-    Object.entries(PRIORITY_CONTROLS).forEach(([name,cid])=>pri[name]=Number($("#"+cid)?.value)||0);
-    data.settings.priorities=pri;
-    save();
-    renderHome();
-    renderOffers();
-  });
-});
 
 
-const _renderSetupPriorityBase=renderSetup;
-renderSetup=function(){_renderSetupPriorityBase();syncPriorityEditorFromData();}
 
 function renderAll(){renderHome();renderSetup();renderDocuments();renderJobs();renderInterviews();renderNetwork();renderOffers();renderAnalytics();populateAIJobs();renderWeekly();}
 const titles={home:["Welcome back","Your job search, prioritized."],jobs:["Jobs","Application Command Center"],interviews:["Interviews","Prep Studio"],network:["Network","Relationship Tracker"],offers:["Offers","Decision Center"],analytics:["Analytics","Search Intelligence"],ai:["AI Toolkit","Personalized prompt builder"],weekly:["Weekly Plan","Your job-search agenda"],documents:["Documents","Resume & Letter Tracker"],setup:["Setup","Personalization Hub"]};
@@ -2093,6 +2037,26 @@ function saveWizStep(){
 }
 function renderWiz(){$("#wizBody").innerHTML=wizSteps[wizStep]();$("#wizDots").innerHTML=wizSteps.map((_,i)=>`<i class="${i<=wizStep?"on":""}"></i>`).join("");$("#wizBack").style.visibility=wizStep===0?"hidden":"visible";$("#wizNext").textContent=wizStep===wizSteps.length-1?"BUILD MY DASHBOARD →":"CONTINUE →";$("#wizBody").onclick=e=>{if(e.target.matches("[data-wday]")){const i=+e.target.dataset.wday;data.settings.searchDays[i]=data.settings.searchDays[i]?0:1;renderWiz()}}}
 function openWizard(){wizStep=0;$("#wizard").classList.add("show");renderWiz()}
+
+/* NEXT MOVE CTA — delegated so Home re-renders can never break it */
+document.addEventListener("click",function(e){
+  const btn=e.target.closest("#nextAction");
+  if(!btn)return;
+  e.preventDefault();
+  e.stopPropagation();
+  const needsSetup=!data.settings.setupComplete;
+  if(needsSetup){
+    showView("setup");
+    openWizard();
+    return;
+  }
+  const fu=dueFollowups()[0];
+  if(fu){showView("jobs");return;}
+  const upcoming=data.interviews.filter(i=>{const d=interviewDateTime(i);return d&&d>=new Date()&&!i.outcome}).sort((a,b)=>interviewDateTime(a)-interviewDateTime(b));
+  if(upcoming[0]){showView("interviews");return;}
+  showView("jobs");
+},true);
+
 $("#openWizard").onclick=openWizard;$("#wizBack").onclick=()=>{saveWizStep();wizStep=Math.max(0,wizStep-1);renderWiz()};$("#wizNext").onclick=()=>{saveWizStep();if(wizStep<wizSteps.length-1){wizStep++;renderWiz()}else{data.settings.wizardSeen=true;data.settings.setupComplete=setupChecks().every(Boolean);save();$("#wizard").classList.remove("show");renderAll();showView("home");toast("Your dashboard is ready.")}};
 
 const FIRST_LAUNCH_KEY="frontShelfJobSearchSystemV1_welcomeSeen";
