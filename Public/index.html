@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>The Job Search Planner — Ultimate V2</title>
+<style>
+:root{
+  --char:#171513; --char2:#221f1c; --paper:#f4efe6; --ivory:#fbf8f2;
+  --champagne:#d7c3a6; --sand:#e8ded0; --taupe:#b7a48e; --camel:#9a775b;
+  --mocha:#6f5140; --espresso:#3d2f28; --ink:#2a2521; --muted:#756d65;
+  --line:#dfd3c4; --danger:#a65e56; --success:#75836b; --shadow:0 16px 40px rgba(55,42,32,.08);
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--paper);color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+.app{min-height:100vh;display:grid;grid-template-columns:232px minmax(0,1fr)}
+.sidebar{background:linear-gradient(180deg,#151311,#201c19 55%,#171513);color:#f8f4ed;position:sticky;top:0;height:100vh;padding:14px 12px;display:flex;flex-direction:column;gap:12px}
+.brand{height:120px;border-bottom:1px solid rgba(215,195,166,.35);overflow:hidden;display:flex;align-items:center;justify-content:center}
+.brand img{width:100%;height:100%;object-fit:cover}
+.nav{display:flex;flex-direction:column;gap:4px;overflow:auto;padding-right:2px}
+.nav button{border:0;background:transparent;color:#eee7de;text-align:left;border-radius:11px;padding:10px 12px;display:grid;grid-template-columns:24px 1fr;gap:9px;align-items:center}
+.nav button:hover,.nav button.active{background:linear-gradient(90deg,rgba(215,195,166,.20),rgba(215,195,166,.06));box-shadow:inset 3px 0 0 var(--champagne)}
+.nav b{font-size:11px;letter-spacing:1.25px}
+.nav small{display:block;font-size:8px;color:#bdb2a6;letter-spacing:.8px;margin-top:2px}
+.side-quote{margin-top:auto;border:1px solid rgba(215,195,166,.45);border-radius:12px;padding:16px;text-align:center}
+.side-quote small{font-size:8px;letter-spacing:1.5px;color:#cfc1b2}
+.side-quote strong{display:block;font-family:Georgia,serif;font-size:14px;line-height:1.5;margin-top:10px;color:#f4ecdf}
+.main{min-width:0}
+.topbar{padding:26px 32px 18px;display:flex;justify-content:space-between;gap:20px;align-items:end}
+.eyebrow{font-size:10px;letter-spacing:2px;color:var(--mocha);font-weight:800;text-transform:uppercase}
+h1,h2,h3{font-family:Georgia,"Times New Roman",serif;color:var(--espresso);margin:0}
+h1{font-size:34px;font-weight:500} h2{font-size:27px;font-weight:500} h3{font-size:19px;font-weight:500}
+.sub{color:var(--muted);font-size:13px;margin-top:6px}
+.btn{border:0;border-radius:10px;padding:11px 16px;font-weight:800;letter-spacing:.8px;font-size:10px}
+.btn.primary{background:var(--espresso);color:#fff}
+.btn.soft{background:#eadfce;color:var(--espresso);border:1px solid #d8c8b4}
+.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--espresso)}
+.btn.danger{background:#f3e5e1;color:#8e4d46;border:1px solid #dfc2bc}
+.content{padding:0 32px 40px}
+.view{display:none} .view.active{display:block}
+.hero{background:linear-gradient(135deg,#332a24,#1c1916);color:white;border-radius:18px;padding:28px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.hero:after{content:"";position:absolute;width:240px;height:240px;border-radius:50%;background:rgba(215,195,166,.10);right:-60px;top:-90px}
+.hero-grid{display:grid;grid-template-columns:1fr 220px;gap:18px;align-items:center}
+.hero h2{color:#fff;font-size:31px}
+.hero p{color:#d8cec2;max-width:700px}
+.health{justify-self:end;width:175px;height:175px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--champagne) 0 78%,rgba(255,255,255,.12) 78%);position:relative}
+.health:before{content:"";position:absolute;inset:16px;border-radius:50%;background:#27211d}
+.health strong{font:500 42px Georgia,serif;z-index:1} .health small{z-index:1;display:block;font-size:8px;letter-spacing:1.5px;color:#cfc5b9;text-align:center}
+.grid2{display:grid;grid-template-columns:1.15fr .85fr;gap:16px;margin-top:16px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:14px}
+.card{background:rgba(251,248,242,.96);border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:0 7px 24px rgba(70,52,38,.05)}
+.card-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.kpi{background:#f8f2e9;border:1px solid var(--line);border-radius:14px;padding:15px}
+.kpi strong{font:500 28px Georgia,serif;color:var(--espresso)} .kpi small{display:block;color:var(--muted);font-size:9px;letter-spacing:1px;margin-top:4px}
+.priority{background:#efe4d4;border:1px solid #ddcab1;border-radius:14px;padding:18px}
+.priority .rank{width:30px;height:30px;border-radius:50%;background:var(--espresso);color:white;display:grid;place-items:center;font-weight:800}
+.priority-main{display:grid;grid-template-columns:40px 1fr auto;gap:12px;align-items:start}
+.meta{font-size:11px;color:var(--muted);margin-top:5px}
+.progress{height:8px;background:#e5dace;border-radius:99px;overflow:hidden} .progress i{display:block;height:100%;background:linear-gradient(90deg,var(--camel),var(--mocha));border-radius:99px}
+.pipeline{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.pipe{text-align:center;padding:14px 8px;background:#f7f1e8;border:1px solid var(--line);border-radius:12px;position:relative}
+.pipe:not(:last-child):after{content:"→";position:absolute;right:-13px;top:50%;transform:translateY(-50%);color:#a58f79;z-index:2}
+.pipe strong{font:500 24px Georgia,serif;display:block} .pipe span{font-size:9px;letter-spacing:1px;color:var(--muted)}
+.insight{display:flex;gap:10px;padding:11px 0;border-bottom:1px solid #eadfd2} .insight:last-child{border:0}
+.insight .ico{width:30px;height:30px;border-radius:10px;background:#e9ddcd;display:grid;place-items:center}
+.table{width:100%;border-collapse:collapse;font-size:12px} .table th{text-align:left;color:var(--muted);font-size:9px;letter-spacing:1px;padding:9px;border-bottom:1px solid var(--line)} .table td{padding:12px 9px;border-bottom:1px solid #eee4d8}
+.pill{display:inline-flex;padding:6px 9px;border-radius:999px;background:#eadfce;color:#594437;font-size:9px;font-weight:800}
+.setup-layout{display:grid;grid-template-columns:1fr 320px;gap:18px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+label{font-size:10px;font-weight:800;letter-spacing:.6px;color:#5c4d42}
+input,select,textarea{width:100%;border:1px solid var(--line);background:#fffdf9;border-radius:10px;padding:11px;margin-top:6px;color:var(--ink)}
+textarea{min-height:90px;resize:vertical}
+.days{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}
+.day{border:1px solid var(--line);background:white;border-radius:999px;padding:8px 10px;font-size:10px}
+.day.on{background:var(--espresso);color:white;border-color:var(--espresso)}
+.weight{display:grid;grid-template-columns:1fr 140px 44px;gap:10px;align-items:center;margin:11px 0}
+.weight input{margin:0;padding:0} .weight output{font-weight:800;color:var(--mocha)}
+.total{display:flex;justify-content:space-between;background:#eee3d4;padding:11px 13px;border-radius:10px;font-size:11px;margin-top:10px}
+.total.bad{background:#f4e2df;color:#8f4b45}
+.checklist{display:flex;flex-direction:column;gap:8px}
+.step{display:grid;grid-template-columns:32px 1fr auto;gap:10px;align-items:center;padding:11px;border:1px solid var(--line);border-radius:11px;background:white}
+.step .num{width:28px;height:28px;border-radius:50%;background:#e6d8c6;display:grid;place-items:center;font-weight:900;color:#604c3f}
+.step.done .num{background:var(--espresso);color:#fff}
+.step small{display:block;color:var(--muted);font-size:9px;margin-top:3px}
+.data-actions{display:grid;gap:8px}
+.placeholder{padding:48px 24px;text-align:center;border:1px dashed #cebda9;border-radius:16px;background:#faf5ed}
+.placeholder b{font:500 25px Georgia,serif;color:var(--espresso);display:block}
+.docs-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.doc-card{padding:16px;border:1px solid var(--line);border-radius:14px;background:#fffdf9}
+.doc-card strong{display:block;font-family:Georgia,serif;font-size:17px;color:var(--espresso)}
+.modal{position:fixed;inset:0;background:rgba(28,24,21,.62);display:none;align-items:center;justify-content:center;padding:20px;z-index:99}
+.modal.show{display:flex}
+.wizard{width:min(820px,96vw);background:var(--ivory);border-radius:22px;box-shadow:0 30px 80px rgba(0,0,0,.25);overflow:hidden}
+.wiz-top{padding:22px 26px;background:linear-gradient(135deg,#302720,#1d1916);color:#fff}
+.wiz-top h2{color:white} .wiz-body{padding:26px} .wiz-actions{display:flex;justify-content:space-between;gap:10px;padding:0 26px 24px}
+.wiz-dots{display:flex;gap:6px;margin-top:12px} .wiz-dots i{width:28px;height:4px;border-radius:99px;background:rgba(255,255,255,.22)} .wiz-dots i.on{background:var(--champagne)}
+.toast{position:fixed;right:20px;bottom:20px;background:#2c241f;color:#fff;padding:12px 16px;border-radius:10px;opacity:0;transform:translateY(8px);transition:.2s;z-index:120} .toast.show{opacity:1;transform:none}
+@media(max-width:980px){.app{grid-template-columns:86px 1fr}.brand{height:78px}.nav button{grid-template-columns:1fr;text-align:center;padding:9px 4px}.nav .txt,.side-quote{display:none}.topbar,.content{padding-left:18px;padding-right:18px}.setup-layout,.grid2{grid-template-columns:1fr}.hero-grid{grid-template-columns:1fr}.health{justify-self:start;width:135px;height:135px}}
+@media(max-width:700px){.app{display:block}.sidebar{position:relative;height:auto;display:block}.brand{height:95px}.nav{display:grid;grid-template-columns:repeat(5,1fr)}.nav button{font-size:12px}.nav .txt{display:none}.topbar{align-items:flex-start;flex-direction:column}.kpis,.grid3,.pipeline,.form-grid,.docs-grid{grid-template-columns:1fr 1fr}.content{padding-bottom:28px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand"><img alt="The Front Shelf" src="data:image/jpeg;base64,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"></div>
+    <nav class="nav" id="nav">
+      <button class="active" data-view="home"><span>⌂</span><span class="txt"><b>HOME</b><small>Your overview</small></span></button>
+      <button data-view="jobs"><span>▣</span><span class="txt"><b>JOBS</b><small>Application tracker</small></span></button>
+      <button data-view="interviews"><span>◴</span><span class="txt"><b>INTERVIEWS</b><small>Prep studio</small></span></button>
+      <button data-view="network"><span>◎</span><span class="txt"><b>NETWORK</b><small>Relationships</small></span></button>
+      <button data-view="offers"><span>◇</span><span class="txt"><b>OFFERS</b><small>Decision center</small></span></button>
+      <button data-view="analytics"><span>⌁</span><span class="txt"><b>ANALYTICS</b><small>Search intelligence</small></span></button>
+      <button data-view="ai"><span>✦</span><span class="txt"><b>AI TOOLKIT</b><small>Prompt builder</small></span></button>
+      <button data-view="weekly"><span>□</span><span class="txt"><b>WEEKLY PLAN</b><small>Your agenda</small></span></button>
+      <button data-view="documents"><span>▤</span><span class="txt"><b>DOCUMENTS</b><small>Version tracker</small></span></button>
+      <button data-view="setup"><span>⚙</span><span class="txt"><b>SETUP</b><small>Personalization</small></span></button>
+    </nav>
+    <div class="side-quote"><small>THE FRONT SHELF</small><strong>YOUR JOB SEARCH.<br>ORGANIZED.</strong></div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div><div class="eyebrow">The Front Shelf · Ultimate V2</div><h1 id="pageTitle">Welcome back</h1><div class="sub" id="pageSub">Your job search, prioritized.</div></div>
+      <div style="display:flex;gap:8px"><button class="btn soft" id="openWizard">QUICK START</button><button class="btn primary" data-jump="setup">EDIT SETUP</button></div>
+    </header>
+
+    <div class="content">
+      <section class="view active" id="home">
+        <div class="hero">
+          <div class="hero-grid">
+            <div><div class="eyebrow" style="color:#d7c3a6">TODAY'S COMMAND CENTER</div><h2 id="greeting">Good morning.</h2><p id="heroCopy">You have a few things worth your attention today. Let's make the next move obvious.</p><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px"><span class="pill" id="heroInterview">0 interviews</span><span class="pill" id="heroFollow">0 follow-ups</span><span class="pill" id="heroApps">0 applications</span></div></div>
+            <div class="health"><div style="text-align:center;z-index:1"><strong id="healthScore">78</strong><small>JOB SEARCH HEALTH</small></div></div>
+          </div>
+        </div>
+
+        <div class="kpis" style="margin-top:14px">
+          <div class="kpi"><strong id="kpiActive">0</strong><small>ACTIVE OPPORTUNITIES</small></div>
+          <div class="kpi"><strong id="kpiInterview">0</strong><small>INTERVIEWS</small></div>
+          <div class="kpi"><strong id="kpiFollow">0</strong><small>FOLLOW-UPS DUE</small></div>
+          <div class="kpi"><strong id="kpiGoal">0%</strong><small>WEEKLY GOAL</small></div>
+        </div>
+
+        <div class="grid2">
+          <article class="card">
+            <div class="card-head"><div><div class="eyebrow">YOUR NEXT MOVE</div><h3>What deserves your attention</h3></div><button class="btn ghost" data-jump="weekly">WEEKLY PLAN</button></div>
+            <div class="priority">
+              <div class="priority-main"><div class="rank">1</div><div><b id="nextTitle">Set up your planner</b><div class="meta" id="nextMeta">Personalize your role, goals and priorities so the planner can work for you.</div></div><button class="btn primary" id="nextAction">DO THIS →</button></div>
+            </div>
+          </article>
+          <article class="card">
+            <div class="card-head"><div><div class="eyebrow">THIS WEEK</div><h3>Weekly momentum</h3></div><b id="weekPct">0%</b></div>
+            <div class="progress"><i id="weekBar" style="width:0%"></i></div>
+            <div id="weekStats" style="display:grid;gap:9px;margin-top:14px"></div>
+          </article>
+        </div>
+
+        <div class="grid2">
+          <article class="card"><div class="card-head"><div><div class="eyebrow">PIPELINE</div><h3>Where opportunities stand</h3></div><button class="btn ghost" data-jump="jobs">VIEW JOBS</button></div><div class="pipeline" id="pipeline"></div></article>
+          <article class="card"><div class="eyebrow">SMART INSIGHTS</div><h3 style="margin-top:4px">What your data is saying</h3><div id="insights" style="margin-top:10px"></div></article>
+        </div>
+      </section>
+
+      <section class="view" id="jobs"><div class="placeholder"><b>Jobs V2 foundation is ready.</b><p>Application Command Center is the next build. Your existing job data is preserved.</p></div></section>
+      <section class="view" id="interviews"><div class="placeholder"><b>Interview Prep Studio is queued.</b><p>Your existing interview records remain available in browser storage.</p></div></section>
+      <section class="view" id="network"><div class="placeholder"><b>Relationship Tracker is queued.</b><p>Contacts will connect directly to opportunities and follow-ups.</p></div></section>
+      <section class="view" id="offers"><div class="placeholder"><b>Offers Decision Center is queued.</b><p>Weighted comparisons and negotiation tracking come later in V2.</p></div></section>
+      <section class="view" id="analytics"><div class="placeholder"><b>Search Intelligence is queued.</b><p>Only real, calculated insights will appear here.</p></div></section>
+      <section class="view" id="ai"><div class="placeholder"><b>AI-Ready Prompt Builder is queued.</b><p>No API key required. Prompts will be built locally from planner data.</p></div></section>
+      <section class="view" id="weekly"><div class="placeholder"><b>Weekly Plan V2 is queued.</b><p>Tasks, goals and focus days will connect to the rest of the system.</p></div></section>
+
+      <section class="view" id="documents">
+        <div class="card">
+          <div class="card-head"><div><div class="eyebrow">DOCUMENTS</div><h2>Resume & Letter Tracker</h2><div class="sub">Track versions now. Performance intelligence comes as your data grows.</div></div><button class="btn primary" id="addDoc">+ ADD DOCUMENT</button></div>
+          <div class="kpis" style="margin-bottom:16px">
+            <div class="kpi"><strong id="docCount">0</strong><small>DOCUMENTS TRACKED</small></div>
+            <div class="kpi"><strong id="resumeCount">0</strong><small>RESUMES</small></div>
+            <div class="kpi"><strong id="letterCount">0</strong><small>COVER LETTERS</small></div>
+            <div class="kpi"><strong id="activeResume">—</strong><small>ACTIVE VERSION</small></div>
+          </div>
+          <div class="docs-grid" id="docGrid"></div>
+        </div>
+      </section>
+
+      <section class="view" id="setup">
+        <div class="setup-layout">
+          <div>
+            <article class="card">
+              <div class="card-head"><div><div class="eyebrow">PERSONALIZATION HUB</div><h2>Build your job search system</h2><div class="sub">These settings power your dashboard, goals and future Fit Scores.</div></div><button class="btn primary" id="saveSetup">SAVE SETTINGS</button></div>
+              <div class="form-grid">
+                <label>Your name<input id="sName" placeholder="Sarah"></label>
+                <label>Your location<input id="sLocation" placeholder="Montreal, QC"></label>
+                <label>Primary target role<input id="sRole" placeholder="Content Researcher"></label>
+                <label>Experience level<select id="sExp"><option>Entry-level</option><option>Mid-level</option><option>Senior</option><option>Career change</option></select></label>
+                <label>Minimum salary<input id="sSalary" type="number" min="0" step="1000"></label>
+                <label>Preferred work style<select id="sStyle"><option>Remote</option><option>Hybrid</option><option>On-site</option><option>Flexible</option></select></label>
+                <label>Weekly application goal<input id="sGoal" type="number" min="1" max="50"></label>
+                <label>Weekly networking goal<input id="sNetwork" type="number" min="0" max="50"></label>
+                <label>Weekly follow-up goal<input id="sFollow" type="number" min="0" max="50"></label>
+                <label>Target industries<input id="sIndustries" placeholder="Media, Research, Beauty"></label>
+              </div>
+              <div style="margin-top:18px"><div class="eyebrow">FOCUS DAYS</div><div class="days" id="dayPicker"></div></div>
+            </article>
+
+            <article class="card" style="margin-top:14px">
+              <div class="card-head"><div><div class="eyebrow">JOB PRIORITIES</div><h3>What matters most to you?</h3><div class="sub">Weights must total 100%. These become the foundation of personalized Fit Scores.</div></div></div>
+              <div id="weights"></div>
+              <div class="total" id="weightTotal"><span>TOTAL WEIGHT</span><b>100%</b></div>
+            </article>
+
+            <article class="card" style="margin-top:14px">
+              <div class="eyebrow">QUICK START</div><h3 style="margin-top:4px">Your onboarding progress</h3>
+              <div class="checklist" id="setupSteps" style="margin-top:14px"></div>
+            </article>
+          </div>
+
+          <aside>
+            <article class="card"><div class="eyebrow">SETUP SUMMARY</div><h3 style="margin-top:4px">What powers your planner</h3><div id="summary" style="display:grid;gap:11px;margin-top:14px"></div></article>
+            <article class="card" style="margin-top:14px"><div class="eyebrow">YOUR DATA</div><h3 style="margin-top:4px">Local & portable</h3><p class="sub">This planner stores data in this browser. Export a backup before clearing browser data or moving devices.</p><div class="data-actions"><button class="btn primary" id="exportData">EXPORT BACKUP</button><label class="btn soft" style="text-align:center">IMPORT BACKUP<input id="importData" type="file" accept=".json" hidden></label><button class="btn danger" id="resetData">RESET PLANNER</button></div></article>
+          </aside>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<div class="modal" id="wizard">
+  <div class="wizard">
+    <div class="wiz-top"><div class="eyebrow" style="color:#d7c3a6">WELCOME TO THE FRONT SHELF</div><h2>Let's build your job search system.</h2><div class="wiz-dots" id="wizDots"></div></div>
+    <div class="wiz-body" id="wizBody"></div>
+    <div class="wiz-actions"><button class="btn ghost" id="wizBack">BACK</button><button class="btn primary" id="wizNext">CONTINUE →</button></div>
+  </div>
+</div>
+<div class="toast" id="toast">Saved.</div>
+
+<script>
+const KEY="frontShelfJobSearchSystemV1";
+const DEFAULT={
+ settings:{name:"",location:"",targetTitle:"Content Researcher",experience:"Mid-level",minSalary:60000,arrangement:"Remote",goal:5,networkGoal:2,followGoal:3,industries:"",searchDays:[1,1,1,1,1,0,0],priorities:{"Work-Life Balance":25,"Growth & Learning":20,"Compensation":20,"Company Culture":15,"Remote Flexibility":10,"Job Stability":5,"Impact & Purpose":5},setupComplete:false,wizardSeen:false},
+ jobs:[],interviews:[],network:[],offers:[],tasks:[],documents:[]
+};
+let raw; try{raw=JSON.parse(localStorage.getItem(KEY)||"null")}catch(e){raw=null}
+let data=raw||structuredClone(DEFAULT);
+data.settings={...structuredClone(DEFAULT.settings),...(data.settings||{})};
+data.settings.priorities={...structuredClone(DEFAULT.settings.priorities),...(data.settings.priorities||{})};
+for(const k of ["jobs","interviews","network","offers","tasks","documents"]) if(!Array.isArray(data[k])) data[k]=[];
+if(!Array.isArray(data.settings.searchDays)) data.settings.searchDays=[1,1,1,1,1,0,0];
+const $=q=>document.querySelector(q), $$=q=>[...document.querySelectorAll(q)];
+const save=()=>{localStorage.setItem(KEY,JSON.stringify(data));};
+function toast(msg="Saved."){$("#toast").textContent=msg;$("#toast").classList.add("show");setTimeout(()=>$("#toast").classList.remove("show"),1800)}
+function todayISO(){return new Date().toISOString().slice(0,10)}
+function dueFollowups(){return data.jobs.filter(j=>j.followUp && j.followUp<=todayISO() && !["Rejected","Withdrawn","Accepted"].includes(j.status))}
+function appliedJobs(){return data.jobs.filter(j=>j.dateApplied)}
+function activeJobs(){return data.jobs.filter(j=>!["Rejected","Withdrawn","Accepted"].includes(j.status))}
+function renderHome(){
+ const s=data.settings;
+ $("#greeting").textContent=s.name?`Good morning, ${s.name}.`:"Good morning.";
+ $("#heroCopy").textContent=s.targetTitle?`You're building toward ${s.targetTitle}. Here's what deserves your attention today.`:"Here's what deserves your attention today.";
+ $("#heroInterview").textContent=`${data.interviews.length} interview${data.interviews.length===1?"":"s"}`;
+ $("#heroFollow").textContent=`${dueFollowups().length} follow-up${dueFollowups().length===1?"":"s"} due`;
+ $("#heroApps").textContent=`${appliedJobs().length} applications tracked`;
+ $("#kpiActive").textContent=activeJobs().length; $("#kpiInterview").textContent=data.interviews.length; $("#kpiFollow").textContent=dueFollowups().length;
+ const goal=Math.max(1,+s.goal||5), apps=appliedJobs().length, ratio=Math.min(1,apps/goal);
+ $("#kpiGoal").textContent=Math.round(ratio*100)+"%"; $("#weekPct").textContent=Math.round(ratio*100)+"%"; $("#weekBar").style.width=Math.round(ratio*100)+"%";
+ $("#weekStats").innerHTML=`<div style="display:flex;justify-content:space-between"><span>Applications</span><b>${apps} / ${goal}</b></div><div style="display:flex;justify-content:space-between"><span>Networking</span><b>${data.network.length} / ${s.networkGoal||0}</b></div><div style="display:flex;justify-content:space-between"><span>Follow-ups due</span><b>${dueFollowups().length}</b></div>`;
+ const statuses=["Saved","Applied","Screening","Interview","Offer"]; $("#pipeline").innerHTML=statuses.map(st=>`<div class="pipe"><strong>${data.jobs.filter(j=>j.status===st).length}</strong><span>${st.toUpperCase()}</span></div>`).join("");
+ let nextTitle="Set up your planner", nextMeta="Personalize your role, goals and priorities so the planner can work for you.", jump="setup";
+ if(s.setupComplete){
+   const fu=dueFollowups()[0];
+   if(fu){nextTitle=`Follow up with ${fu.company}`; nextMeta=`This opportunity has a follow-up due. Keep momentum while the application is warm.`; jump="jobs";}
+   else if(data.interviews[0]){nextTitle=`Prepare for ${data.interviews[0].company}`;nextMeta=`You have an interview in your tracker. Prep beats panic.`;jump="interviews";}
+   else{nextTitle="Add your next target opportunity";nextMeta="A focused pipeline gives the rest of the planner something useful to optimize.";jump="jobs";}
+ }
+ $("#nextTitle").textContent=nextTitle;$("#nextMeta").textContent=nextMeta;$("#nextAction").onclick=()=>showView(jump);
+ const insights=[];
+ if(!data.jobs.length) insights.push(["✦","Add your first opportunity","Your analytics and Fit Scores become useful as soon as you start tracking jobs."]);
+ if(dueFollowups().length) insights.push(["!","Follow-up window","You have "+dueFollowups().length+" follow-up"+(dueFollowups().length===1?"":"s")+" due."]);
+ if(data.jobs.length>=3){const src={};data.jobs.forEach(j=>src[j.source]=(src[j.source]||0)+1);const top=Object.entries(src).sort((a,b)=>b[1]-a[1])[0];if(top)insights.push(["↗",top[0]+" is your most-used source",top[1]+" opportunities in your tracker came from here."]);}
+ if(!insights.length) insights.push(["✓","You're organized","No overdue follow-ups right now. Keep building quality opportunities."]);
+ $("#insights").innerHTML=insights.slice(0,3).map(x=>`<div class="insight"><div class="ico">${x[0]}</div><div><b>${x[1]}</b><div class="meta">${x[2]}</div></div></div>`).join("");
+ const checks=setupChecks(); const setupScore=checks.filter(Boolean).length/6;
+ let health=Math.round(55+setupScore*20+Math.min(15,data.jobs.length*3)+Math.min(10,data.interviews.length*5)); $("#healthScore").textContent=Math.min(100,health);
+}
+function setupChecks(){
+ const s=data.settings,total=Object.values(s.priorities).reduce((a,b)=>a+(+b||0),0);
+ return [!!s.name,!!s.targetTitle,!!s.goal,!!s.minSalary,s.searchDays.some(Boolean),total===100];
+}
+function renderSetup(){
+ const s=data.settings;
+ $("#sName").value=s.name||"";$("#sLocation").value=s.location||"";$("#sRole").value=s.targetTitle||"";$("#sExp").value=s.experience||"Mid-level";$("#sSalary").value=s.minSalary||"";$("#sStyle").value=s.arrangement||"Remote";$("#sGoal").value=s.goal||5;$("#sNetwork").value=s.networkGoal||2;$("#sFollow").value=s.followGoal||3;$("#sIndustries").value=s.industries||"";
+ const dayNames=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];$("#dayPicker").innerHTML=dayNames.map((d,i)=>`<button class="day ${s.searchDays[i]?"on":""}" data-day="${i}">${d}</button>`).join("");
+ $("#weights").innerHTML=Object.entries(s.priorities).map(([k,v])=>`<div class="weight"><span>${k}</span><input type="range" min="0" max="50" step="5" value="${v}" data-weight="${k}"><output>${v}%</output></div>`).join("");
+ updateWeightTotal();
+ const c=setupChecks(),labels=[["Tell us about yourself","Name and location"],["Define your target role","What are you aiming for?"],["Set a weekly goal","Choose a sustainable target"],["Set your salary target","Know your minimum"],["Choose focus days","Protect your time"],["Weight job priorities","Power your future Fit Score"]];
+ $("#setupSteps").innerHTML=labels.map((x,i)=>`<div class="step ${c[i]?"done":""}"><div class="num">${c[i]?"✓":i+1}</div><div><b>${x[0]}</b><small>${x[1]}</small></div><span class="pill">${c[i]?"DONE":"TO DO"}</span></div>`).join("");
+ $("#summary").innerHTML=`<div><small class="eyebrow">PRIMARY ROLE</small><b style="display:block;margin-top:4px">${s.targetTitle||"Not set"}</b></div><div><small class="eyebrow">SALARY FLOOR</small><b style="display:block;margin-top:4px">${s.minSalary?"$"+Number(s.minSalary).toLocaleString()+"+":"Not set"}</b></div><div><small class="eyebrow">WORK STYLE</small><b style="display:block;margin-top:4px">${s.arrangement||"Not set"}</b></div><div><small class="eyebrow">FOCUS DAYS</small><b style="display:block;margin-top:4px">${dayNames.filter((d,i)=>s.searchDays[i]).join(", ")||"Not set"}</b></div>`;
+}
+function updateWeightTotal(){
+ const total=$$("#weights input[data-weight]").reduce((a,x)=>a+(+x.value||0),0), el=$("#weightTotal"); el.querySelector("b").textContent=total+"%";el.classList.toggle("bad",total!==100); return total;
+}
+function collectSetup(){
+ const s=data.settings; s.name=$("#sName").value.trim();s.location=$("#sLocation").value.trim();s.targetTitle=$("#sRole").value.trim();s.experience=$("#sExp").value;s.minSalary=+$("#sSalary").value||0;s.arrangement=$("#sStyle").value;s.goal=+$("#sGoal").value||5;s.networkGoal=+$("#sNetwork").value||0;s.followGoal=+$("#sFollow").value||0;s.industries=$("#sIndustries").value.trim();
+ const p={}; $$("#weights input[data-weight]").forEach(x=>p[x.dataset.weight]=+x.value);s.priorities=p;s.setupComplete=setupChecks().every(Boolean);
+}
+$("#dayPicker").onclick=e=>{if(!e.target.matches("[data-day]"))return;const i=+e.target.dataset.day;data.settings.searchDays[i]=data.settings.searchDays[i]?0:1;renderSetup();};
+$("#weights").oninput=e=>{if(e.target.matches("[data-weight]")){e.target.nextElementSibling.textContent=e.target.value+"%";updateWeightTotal();}};
+$("#saveSetup").onclick=()=>{collectSetup();if(updateWeightTotal()!==100){toast("Priorities must total 100%.");return};save();renderAll();toast("Setup saved.");};
+function renderDocuments(){
+ const docs=data.documents||[];$("#docCount").textContent=docs.length;$("#resumeCount").textContent=docs.filter(d=>d.type==="Resume").length;$("#letterCount").textContent=docs.filter(d=>d.type==="Cover Letter").length;$("#activeResume").textContent=docs.find(d=>d.type==="Resume"&&d.status==="Active")?.version||"—";
+ $("#docGrid").innerHTML=docs.length?docs.map(d=>`<div class="doc-card"><span class="pill">${d.type}</span><strong style="margin-top:9px">${d.name}</strong><div class="meta">${d.version||""} · ${d.status||"Active"}</div><div class="meta">${d.target||"General"}${d.link?` · <a href="${d.link}" target="_blank">Open link</a>`:""}</div></div>`).join(""):`<div class="placeholder" style="grid-column:1/-1;padding:30px"><b>No documents yet.</b><p>Add a resume or cover-letter version to start tracking which materials you use.</p></div>`;
+}
+$("#addDoc").onclick=()=>{const name=prompt("Document name (example: Resume — Content Research V3)");if(!name)return;const type=prompt("Type: Resume, Cover Letter, or Other","Resume")||"Other";const version=prompt("Version","V1")||"";const target=prompt("Target role / company","General")||"";data.documents.push({id:Date.now(),name,type,version,target,status:"Active",link:""});save();renderDocuments();toast("Document added.");};
+function renderAll(){renderHome();renderSetup();renderDocuments();}
+const titles={home:["Welcome back","Your job search, prioritized."],jobs:["Jobs","Application Command Center"],interviews:["Interviews","Prep Studio"],network:["Network","Relationship Tracker"],offers:["Offers","Decision Center"],analytics:["Analytics","Search Intelligence"],ai:["AI Toolkit","Personalized prompt builder"],weekly:["Weekly Plan","Your job-search agenda"],documents:["Documents","Resume & Letter Tracker"],setup:["Setup","Personalization Hub"]};
+function showView(id){$$(".view").forEach(v=>v.classList.toggle("active",v.id===id));$$(".nav button").forEach(b=>b.classList.toggle("active",b.dataset.view===id));$("#pageTitle").textContent=titles[id][0];$("#pageSub").textContent=titles[id][1];window.scrollTo({top:0,behavior:"smooth"});}
+$("#nav").onclick=e=>{const b=e.target.closest("button[data-view]");if(b)showView(b.dataset.view)};$$("[data-jump]").forEach(b=>b.onclick=()=>showView(b.dataset.jump));
+$("#exportData").onclick=()=>{const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="the-front-shelf-backup.json";a.click();URL.revokeObjectURL(a.href)};
+$("#importData").onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{data=JSON.parse(r.result);save();location.reload()}catch(err){toast("That backup file couldn't be read.")}};r.readAsText(f)};
+$("#resetData").onclick=()=>{if(confirm("Reset all planner data on this device? This cannot be undone unless you exported a backup.")){localStorage.removeItem(KEY);location.reload()}};
+let wizStep=0;
+const wizSteps=[
+()=>`<div class="eyebrow">STEP 1 OF 6</div><h2 style="margin-top:5px">Tell us about you</h2><p class="sub">Personalize the planner so it feels like yours.</p><div class="form-grid" style="margin-top:16px"><label>Your name<input id="wName" value="${data.settings.name||""}" placeholder="Sarah"></label><label>Location<input id="wLocation" value="${data.settings.location||""}" placeholder="Montreal, QC"></label></div>`,
+()=>`<div class="eyebrow">STEP 2 OF 6</div><h2 style="margin-top:5px">Define your target</h2><p class="sub">What role are you moving toward?</p><div class="form-grid" style="margin-top:16px"><label>Primary target role<input id="wRole" value="${data.settings.targetTitle||""}"></label><label>Experience level<select id="wExp">${["Entry-level","Mid-level","Senior","Career change"].map(x=>`<option ${x===data.settings.experience?"selected":""}>${x}</option>`).join("")}</select></label></div>`,
+()=>`<div class="eyebrow">STEP 3 OF 6</div><h2 style="margin-top:5px">Set sustainable goals</h2><p class="sub">Quality over panic-applying.</p><div class="form-grid" style="margin-top:16px"><label>Applications / week<input id="wGoal" type="number" value="${data.settings.goal||5}"></label><label>Networking / week<input id="wNet" type="number" value="${data.settings.networkGoal||2}"></label></div>`,
+()=>`<div class="eyebrow">STEP 4 OF 6</div><h2 style="margin-top:5px">Set your minimums</h2><p class="sub">Your salary floor and work style help future Fit Scores.</p><div class="form-grid" style="margin-top:16px"><label>Minimum salary<input id="wSalary" type="number" value="${data.settings.minSalary||60000}"></label><label>Work style<select id="wStyle">${["Remote","Hybrid","On-site","Flexible"].map(x=>`<option ${x===data.settings.arrangement?"selected":""}>${x}</option>`).join("")}</select></label></div>`,
+()=>`<div class="eyebrow">STEP 5 OF 6</div><h2 style="margin-top:5px">Choose your focus days</h2><p class="sub">Your consistency score should respect the days you actually planned to search.</p><div class="days" style="margin-top:18px">${["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map((d,i)=>`<button class="day ${data.settings.searchDays[i]?"on":""}" data-wday="${i}">${d}</button>`).join("")}</div>`,
+()=>`<div class="eyebrow">STEP 6 OF 6</div><h2 style="margin-top:5px">You're ready.</h2><p class="sub">Your dashboard will now use your target role, goals, focus days and priorities. You can fine-tune priority weights anytime in Setup.</p><div class="card" style="margin-top:16px;background:#efe4d4"><b>${data.settings.targetTitle||"Your target role"}</b><div class="meta">${data.settings.arrangement} · ${data.settings.minSalary?"$"+Number(data.settings.minSalary).toLocaleString()+"+":"Salary not set"} · ${data.settings.goal||5} applications/week</div></div>`
+];
+function saveWizStep(){
+ const s=data.settings;
+ if(wizStep===0){s.name=$("#wName")?.value.trim()||s.name;s.location=$("#wLocation")?.value.trim()||s.location}
+ if(wizStep===1){s.targetTitle=$("#wRole")?.value.trim()||s.targetTitle;s.experience=$("#wExp")?.value||s.experience}
+ if(wizStep===2){s.goal=+$("#wGoal")?.value||s.goal;s.networkGoal=+$("#wNet")?.value||s.networkGoal}
+ if(wizStep===3){s.minSalary=+$("#wSalary")?.value||s.minSalary;s.arrangement=$("#wStyle")?.value||s.arrangement}
+}
+function renderWiz(){$("#wizBody").innerHTML=wizSteps[wizStep]();$("#wizDots").innerHTML=wizSteps.map((_,i)=>`<i class="${i<=wizStep?"on":""}"></i>`).join("");$("#wizBack").style.visibility=wizStep===0?"hidden":"visible";$("#wizNext").textContent=wizStep===wizSteps.length-1?"BUILD MY DASHBOARD →":"CONTINUE →";$("#wizBody").onclick=e=>{if(e.target.matches("[data-wday]")){const i=+e.target.dataset.wday;data.settings.searchDays[i]=data.settings.searchDays[i]?0:1;renderWiz()}}}
+function openWizard(){wizStep=0;$("#wizard").classList.add("show");renderWiz()}
+$("#openWizard").onclick=openWizard;$("#wizBack").onclick=()=>{saveWizStep();wizStep=Math.max(0,wizStep-1);renderWiz()};$("#wizNext").onclick=()=>{saveWizStep();if(wizStep<wizSteps.length-1){wizStep++;renderWiz()}else{data.settings.wizardSeen=true;data.settings.setupComplete=setupChecks().every(Boolean);save();$("#wizard").classList.remove("show");renderAll();showView("home");toast("Your dashboard is ready.")}};
+renderAll();
+if(!data.settings.wizardSeen && !raw) setTimeout(openWizard,350);
+</script>
+</body>
+</html>
