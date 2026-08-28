@@ -480,6 +480,42 @@ input,select,textarea{font-size:16px} /* prevents iOS auto-zoom */
   }
 }
 
+
+/* IPAD NAV SIZE HOTFIX — readable labels/icons at full and split widths */
+@media(min-width:701px) and (max-width:1100px){
+  .sidebar .exact-v2-logo{width:145px!important;height:88px!important}
+  #nav{gap:8px!important}
+  #nav button{
+    font-size:11px!important;
+    line-height:1.1!important;
+    min-height:46px!important;
+    padding:11px 15px!important;
+    letter-spacing:.25px!important;
+  }
+  #nav button svg,
+  #nav button i,
+  #nav button .ico,
+  #nav button [class*="icon"]{
+    width:18px!important;
+    height:18px!important;
+    min-width:18px!important;
+    font-size:18px!important;
+  }
+}
+/* narrower iPad split view: never shrink the tabs; swipe the row instead */
+@media(min-width:701px) and (max-width:900px){
+  #nav{
+    justify-content:flex-start!important;
+    gap:7px!important;
+  }
+  #nav button{
+    flex:0 0 auto!important;
+    font-size:11px!important;
+    min-height:46px!important;
+    padding:11px 15px!important;
+  }
+}
+
 </style>
 </head>
 <body>
