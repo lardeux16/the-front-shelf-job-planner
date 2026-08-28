@@ -715,6 +715,15 @@ input,select,textarea{font-size:16px} /* prevents iOS auto-zoom */
   }
 }
 
+
+.priority-editor{display:grid;gap:12px}
+.priority-edit-row{display:grid;grid-template-columns:190px 1fr;gap:14px;align-items:center;padding:10px 12px;background:#fffdf9;border:1px solid var(--line);border-radius:10px}
+.priority-edit-row label{display:flex;justify-content:space-between;gap:10px;align-items:center;font-size:10px;font-weight:800;color:var(--espresso)}
+.priority-edit-row label b{font-size:10px;color:var(--mocha)}
+.priority-edit-row input[type="range"]{width:100%;accent-color:var(--mocha);cursor:pointer}
+#weightTotal.bad{color:var(--danger)}
+@media(max-width:700px){.priority-edit-row{grid-template-columns:1fr;gap:7px}}
+
 </style>
 </head>
 <body>
@@ -1923,6 +1932,59 @@ showView=function(id){
   $("#mobileMoreBtn")?.classList.toggle("active",isPhoneNav()&&secondary);
   $$("#mobileMoreMenu button[data-mobile-view]").forEach(b=>b.classList.toggle("active",b.dataset.mobileView===id));
 }
+
+
+/* EDITABLE JOB PRIORITIES — torture-test fix */
+const PRIORITY_CONTROLS={
+  "Work-Life Balance":"p-balance",
+  "Growth & Learning":"p-growth",
+  "Compensation":"p-comp",
+  "Company Culture":"p-culture",
+  "Remote Flexibility":"p-remote",
+  "Job Stability":"p-stability",
+  "Impact & Purpose":"p-impact"
+};
+function syncPriorityEditorFromData(){
+  const pri=data.settings.priorities||{};
+  Object.entries(PRIORITY_CONTROLS).forEach(([name,id])=>{
+    const el=$("#"+id); if(!el)return;
+    if(pri[name]!==undefined) el.value=Number(pri[name])||0;
+  });
+  updatePriorityEditor();
+}
+function updatePriorityEditor(){
+  const map={
+    "p-balance":"pv-balance","p-growth":"pv-growth","p-comp":"pv-comp","p-culture":"pv-culture",
+    "p-remote":"pv-remote","p-stability":"pv-stability","p-impact":"pv-impact"
+  };
+  let total=0;
+  Object.entries(map).forEach(([id,vid])=>{
+    const el=$("#"+id); if(!el)return;
+    const v=Number(el.value)||0; total+=v;
+    if($("#"+vid))$("#"+vid).textContent=v+"%";
+  });
+  if($("#weightTotal")){
+    $("#weightTotal").textContent=total+"%";
+    $("#weightTotal").classList.toggle("bad",total!==100);
+  }
+  return total;
+}
+Object.values(PRIORITY_CONTROLS).forEach(id=>{
+  $("#"+id)?.addEventListener("input",updatePriorityEditor);
+  $("#"+id)?.addEventListener("change",()=>{
+    const total=updatePriorityEditor();
+    const pri={};
+    Object.entries(PRIORITY_CONTROLS).forEach(([name,cid])=>pri[name]=Number($("#"+cid)?.value)||0);
+    data.settings.priorities=pri;
+    save();
+    renderHome();
+    renderOffers();
+  });
+});
+
+
+const _renderSetupPriorityBase=renderSetup;
+renderSetup=function(){_renderSetupPriorityBase();syncPriorityEditorFromData();}
 
 function renderAll(){renderHome();renderSetup();renderDocuments();renderJobs();renderInterviews();renderNetwork();renderOffers();renderAnalytics();populateAIJobs();renderWeekly();}
 const titles={home:["Welcome back","Your job search, prioritized."],jobs:["Jobs","Application Command Center"],interviews:["Interviews","Prep Studio"],network:["Network","Relationship Tracker"],offers:["Offers","Decision Center"],analytics:["Analytics","Search Intelligence"],ai:["AI Toolkit","Personalized prompt builder"],weekly:["Weekly Plan","Your job-search agenda"],documents:["Documents","Resume & Letter Tracker"],setup:["Setup","Personalization Hub"]};
