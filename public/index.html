@@ -585,6 +585,136 @@ input,select,textarea{font-size:16px} /* prevents iOS auto-zoom */
   }
 }
 
+
+/* ADAPTIVE NAV BREAKPOINT FIX — iPad split view can report >1100 CSS px */
+@media(max-width:1280px){
+  .app{display:block!important}
+  .sidebar{
+    position:sticky!important;
+    top:0!important;
+    left:auto!important;
+    width:100%!important;
+    height:auto!important;
+    min-height:0!important;
+    z-index:180!important;
+    padding:10px 16px 12px!important;
+    display:block!important;
+    border-right:0!important;
+    border-bottom:1px solid rgba(255,255,255,.08)!important;
+  }
+  .sidebar .logo{
+    display:flex!important;
+    justify-content:center!important;
+    margin:0 0 7px!important;
+    padding:0!important;
+  }
+  .sidebar .exact-v2-logo{
+    width:132px!important;
+    height:80px!important;
+  }
+  .sidebar-bottom,.sidebar .mindset,.sidebar .quote,.sidebar footer{display:none!important}
+
+  #nav{
+    display:flex!important;
+    flex-direction:row!important;
+    align-items:center!important;
+    justify-content:center!important;
+    gap:7px!important;
+    width:100%!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    -webkit-overflow-scrolling:touch!important;
+    scrollbar-width:none!important;
+    padding:2px 8px 4px!important;
+  }
+  #nav::-webkit-scrollbar{display:none!important}
+
+  #nav button{
+    display:flex!important;
+    flex-direction:row!important;
+    align-items:center!important;
+    justify-content:center!important;
+    gap:7px!important;
+    flex:0 0 auto!important;
+    width:auto!important;
+    min-width:max-content!important;
+    min-height:44px!important;
+    padding:10px 13px!important;
+    margin:0!important;
+    white-space:nowrap!important;
+    border-radius:10px!important;
+  }
+  #nav .txt{
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:flex-start!important;
+    min-width:max-content!important;
+  }
+  #nav .txt b{
+    display:block!important;
+    font-size:10px!important;
+    line-height:1.05!important;
+    letter-spacing:.35px!important;
+  }
+  #nav .txt small{display:none!important}
+  #nav button > span:first-child{
+    display:inline-flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    width:20px!important;
+    min-width:20px!important;
+    height:20px!important;
+    font-size:17px!important;
+    line-height:20px!important;
+  }
+  .main{
+    margin-left:0!important;
+    width:100%!important;
+    padding-left:18px!important;
+    padding-right:18px!important;
+  }
+}
+
+/* Medium/split iPad: keep tabs readable, scroll instead of compressing */
+@media(max-width:980px) and (min-width:701px){
+  #nav{
+    justify-content:flex-start!important;
+    padding-left:10px!important;
+    padding-right:10px!important;
+  }
+  #nav button{
+    flex:0 0 auto!important;
+    min-width:max-content!important;
+  }
+}
+
+/* iPhone / very narrow pane: compact primary tabs + More */
+@media(max-width:700px){
+  .sidebar{padding:7px 9px 9px!important}
+  .sidebar .exact-v2-logo{width:86px!important;height:47px!important}
+  #nav{
+    justify-content:flex-start!important;
+    gap:4px!important;
+    overflow-x:auto!important;
+  }
+  #nav button{
+    flex:0 0 auto!important;
+    min-width:62px!important;
+    padding:7px 6px!important;
+    flex-direction:column!important;
+    gap:4px!important;
+  }
+  #nav .txt{align-items:center!important}
+  #nav .txt b{font-size:9px!important}
+  #nav button > span:first-child{
+    width:auto!important;
+    min-width:0!important;
+    height:auto!important;
+    font-size:18px!important;
+    line-height:18px!important;
+  }
+}
+
 </style>
 </head>
 <body>
