@@ -775,7 +775,7 @@ input,select,textarea{font-size:16px} /* prevents iOS auto-zoom */
           <article class="card">
             <div class="card-head"><div><div class="eyebrow">YOUR NEXT MOVE</div><h3>What deserves your attention</h3></div><button class="btn ghost" data-jump="weekly">WEEKLY PLAN</button></div>
             <div class="priority">
-              <div class="priority-main"><div class="rank">1</div><div><b id="nextTitle">Set up your planner</b><div class="meta" id="nextMeta">Personalize your role, goals and priorities so the planner can work for you.</div></div><button class="btn primary" id="nextAction">DO THIS →</button></div>
+              <div class="priority-main"><div class="rank">1</div><div><b id="nextTitle">Set up your planner</b><div class="meta" id="nextMeta">Personalize your role, goals and priorities so the planner can work for you.</div></div><button type="button" class="btn primary" id="nextAction" data-home-next="1">DO THIS →</button></div>
             </div>
           </article>
           <article class="card">
@@ -2229,6 +2229,29 @@ renderAll();
 updateDemoUI();
 showFirstLaunchIfNeeded();
 if(!data.settings.wizardSeen && !raw) setTimeout(openWizard,350);
+
+/* HOME NEXT ACTION HARDENING */
+document.addEventListener("click", function(e){
+  const btn=e.target.closest && e.target.closest("#nextAction,[data-home-next='1']");
+  if(!btn)return;
+  e.preventDefault();
+  e.stopPropagation();
+  const s=data.settings||{};
+  if(!s.setupComplete){
+    showView("setup");
+    setTimeout(()=>{
+      if(typeof openWizard==="function") openWizard();
+      else document.getElementById("openWizard")?.click();
+    },0);
+    return;
+  }
+  const fu=dueFollowups()[0];
+  if(fu){showView("jobs");return;}
+  const upcoming=data.interviews.filter(i=>{const d=interviewDateTime(i);return d&&d>=new Date()&&!i.outcome}).sort((a,b)=>interviewDateTime(a)-interviewDateTime(b));
+  if(upcoming[0]){showView("interviews");return;}
+  showView("jobs");
+}, true);
+
 </script>
 <input type="file" id="safeImportFile" accept=".json,application/json" style="display:none">
 </body>
