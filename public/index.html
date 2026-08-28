@@ -189,6 +189,19 @@ textarea{min-height:90px;resize:vertical}
 .demo-ribbon.show{display:block}
 @media(max-width:700px){.empty-guide{grid-template-columns:1fr}}
 
+
+/* DATA SAFETY PASS */
+.safety-center{border:1px solid #d8c7b3;background:#f1e7da;border-radius:16px;padding:18px;margin-top:14px}
+.safety-head{display:flex;justify-content:space-between;gap:14px;align-items:flex-start}
+.safety-status{display:inline-flex;align-items:center;gap:7px;font-size:9px;font-weight:900;letter-spacing:.7px;color:var(--espresso)}
+.safety-dot{width:8px;height:8px;border-radius:50%;background:var(--success)}
+.safety-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:14px}
+.safety-item{background:#fffdf9;border:1px solid var(--line);border-radius:11px;padding:12px}
+.safety-item b{font-size:10px;display:block}.safety-item small{display:block;color:var(--muted);font-size:9px;line-height:1.45;margin-top:5px}
+.danger-zone{border:1px solid #d9b7b1;background:#f6e8e5;border-radius:14px;padding:15px;margin-top:12px}
+.backup-meta{font-size:9px;color:var(--muted);margin-top:8px}
+@media(max-width:700px){.safety-grid{grid-template-columns:1fr}.safety-head{display:block}}
+
 </style>
 </head>
 <body>
@@ -511,6 +524,31 @@ textarea{min-height:90px;resize:vertical}
           <aside>
             <article class="card"><div class="eyebrow">SETUP SUMMARY</div><h3 style="margin-top:4px">What powers your planner</h3><div id="summary" style="display:grid;gap:11px;margin-top:14px"></div></article>
             <article class="card" style="margin-top:14px"><div class="eyebrow">YOUR DATA</div><h3 style="margin-top:4px">Local & portable</h3><p class="sub">This planner stores data in this browser. Export a backup before clearing browser data or moving devices.</p>
+
+<div class="safety-center">
+  <div class="safety-head">
+    <div>
+      <div class="eyebrow">DATA SAFETY CENTER</div>
+      <h3 style="margin:5px 0 0">Keep your search portable.</h3>
+      <div class="backup-meta" id="backupStatus">Your planner is saved locally in this browser.</div>
+    </div>
+    <div class="safety-status"><span class="safety-dot"></span> LOCAL STORAGE ACTIVE</div>
+  </div>
+  <div class="safety-grid">
+    <div class="safety-item"><b>EXPORT A BACKUP</b><small>Download a timestamped copy of your planner data. Keep it somewhere you control.</small></div>
+    <div class="safety-item"><b>IMPORT SAFELY</b><small>The planner checks the backup structure before replacing anything. Your current data is preserved if validation fails.</small></div>
+    <div class="safety-item"><b>MOVING DEVICES?</b><small>Export on the old device, open the planner on the new device, then import your backup there.</small></div>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:13px">
+    <button class="btn primary" id="safeExport">EXPORT BACKUP</button>
+    <button class="btn soft" id="safeImport">IMPORT BACKUP</button>
+  </div>
+  <div class="danger-zone">
+    <div class="eyebrow">BEFORE CLEARING BROWSER DATA</div>
+    <div class="meta" style="margin-top:6px">Export a backup first. Clearing site data, browser storage, or some privacy-cleaning tools can remove locally stored planner information.</div>
+  </div>
+</div>
+
 <div class="demo-panel">
   <div class="demo-panel-head">
     <div><div class="eyebrow">EXPLORE WITH SAMPLE DATA</div><p>Want to see how the connected planner behaves before entering your own search? Load a small fictional example. Your current planner will be backed up in this browser first.</p></div>
@@ -1477,10 +1515,74 @@ function updateDemoUI(){
 if($("#loadDemo"))$("#loadDemo").onclick=loadDemoMode;
 if($("#restoreBeforeDemo"))$("#restoreBeforeDemo").onclick=restorePreDemo;
 
+
+/* DATA SAFETY HARDENING */
+const BACKUP_VERSION=2;
+const LAST_BACKUP_KEY="frontShelfJobSearchSystemV1_lastBackup";
+function pad2(n){return String(n).padStart(2,"0")}
+function backupFilename(){
+  const d=new Date();
+  return `The_Front_Shelf_Backup_${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}_${pad2(d.getHours())}-${pad2(d.getMinutes())}.json`;
+}
+function exportSafeBackup(){
+  const payload={
+    app:"The Front Shelf — Job Search Planner",
+    backupVersion:BACKUP_VERSION,
+    exportedAt:new Date().toISOString(),
+    storageKey:"frontShelfJobSearchSystemV1",
+    data:data
+  };
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=backupFilename();document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  localStorage.setItem(LAST_BACKUP_KEY,new Date().toISOString());updateBackupStatus();toast("Backup exported.");
+}
+function validateImportedPlanner(raw){
+  if(!raw||typeof raw!=="object")throw new Error("This file does not contain readable planner data.");
+  let candidate=raw.data&&typeof raw.data==="object"?raw.data:raw; // supports older direct-data backups too
+  const requiredArrays=["jobs","interviews","network","offers","tasks","documents"];
+  const missing=requiredArrays.filter(k=>!Array.isArray(candidate[k]));
+  if(missing.length)throw new Error("This does not look like a valid Front Shelf backup. Missing: "+missing.join(", ")+".");
+  if(!candidate.settings||typeof candidate.settings!=="object")throw new Error("This backup is missing planner settings.");
+  return candidate;
+}
+function mergeImportedPlanner(candidate){
+  // Keep future-safe defaults from current model while replacing actual user content.
+  const merged={...data,...candidate};
+  merged.settings={...data.settings,...(candidate.settings||{})};
+  ["jobs","interviews","network","offers","tasks","documents"].forEach(k=>merged[k]=Array.isArray(candidate[k])?candidate[k]:[]);
+  return merged;
+}
+async function importSafeBackup(file){
+  if(!file)return;
+  let raw;
+  try{raw=JSON.parse(await file.text())}catch(e){toast("Import stopped: that file is not valid JSON.");return}
+  let candidate;
+  try{candidate=validateImportedPlanner(raw)}catch(e){toast(e.message);return}
+  const counts=`${candidate.jobs.length} jobs, ${candidate.interviews.length} interviews, ${candidate.network.length} contacts, ${candidate.offers.length} offers and ${candidate.tasks.length} tasks`;
+  if(!confirm(`Valid Front Shelf backup found (${counts}).\n\nImporting it will replace the planner data currently in this browser. Continue?`))return;
+  // Emergency rollback snapshot before destructive import.
+  localStorage.setItem("frontShelfJobSearchSystemV1_preImportRollback",JSON.stringify(data));
+  const merged=mergeImportedPlanner(candidate);
+  Object.keys(data).forEach(k=>delete data[k]);Object.assign(data,merged);
+  save();renderAll();updateDemoUI();updateBackupStatus();showView("home");toast("Backup imported successfully.");
+}
+function updateBackupStatus(){
+  const el=$("#backupStatus");if(!el)return;
+  const last=localStorage.getItem(LAST_BACKUP_KEY);
+  if(!last){el.textContent="Your planner is saved locally in this browser. No exported backup is recorded yet.";return}
+  const d=new Date(last);
+  el.textContent=`Your planner is saved locally. Last backup exported: ${d.toLocaleDateString()} ${d.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}.`;
+}
+$("#safeExport").onclick=exportSafeBackup;
+$("#safeImport").onclick=()=>$("#safeImportFile").click();
+$("#safeImportFile").onchange=e=>{importSafeBackup(e.target.files?.[0]);e.target.value=""};
+updateBackupStatus();
+
 renderAll();
 updateDemoUI();
 showFirstLaunchIfNeeded();
 if(!data.settings.wizardSeen && !raw) setTimeout(openWizard,350);
 </script>
+<input type="file" id="safeImportFile" accept=".json,application/json" style="display:none">
 </body>
 </html>
