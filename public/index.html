@@ -294,6 +294,114 @@ input,select,textarea{font-size:16px} /* prevents iOS auto-zoom */
   .matrix{min-width:760px}
 }
 
+
+/* RESPONSIVE NAVIGATION V2: desktop / iPad / iPhone */
+.mobile-more{display:none;position:relative;flex:0 0 auto}
+.mobile-more-btn{min-height:40px;padding:9px 11px;border:0;border-radius:10px;background:transparent;color:#eee;font-size:9px;font-weight:800;letter-spacing:.3px;white-space:nowrap}
+.mobile-more-btn.active,.mobile-more-btn:hover{background:#ead8c5;color:#3d2f28}
+.mobile-more-menu{display:none;position:fixed;z-index:210;background:#1b1816;border:1px solid rgba(255,255,255,.11);border-radius:14px;padding:8px;box-shadow:0 18px 50px rgba(0,0,0,.35);min-width:190px}
+.mobile-more-menu.show{display:grid;gap:4px}
+.mobile-more-menu button{appearance:none;border:0;background:transparent;color:#f1ece5;text-align:left;padding:11px 12px;border-radius:9px;font-size:10px;font-weight:800;letter-spacing:.35px}
+.mobile-more-menu button:hover,.mobile-more-menu button.active{background:#ead8c5;color:#3d2f28}
+
+@media(min-width:1101px){
+  .mobile-more,.mobile-more-menu{display:none!important}
+}
+
+/* iPad: logo above one full horizontal navigation strip */
+@media(min-width:701px) and (max-width:1100px){
+  .sidebar{
+    position:sticky!important;
+    top:0!important;
+    width:100%!important;
+    height:auto!important;
+    min-height:0!important;
+    z-index:120;
+    padding:10px 18px 12px!important;
+    display:block!important;
+    border-right:0!important;
+    border-bottom:1px solid rgba(255,255,255,.08)
+  }
+  .sidebar .logo{display:flex!important;justify-content:center!important;margin:0 0 7px!important;padding:0!important}
+  .sidebar .exact-v2-logo{width:116px!important;height:72px!important}
+  .nav{
+    display:flex!important;
+    width:100%!important;
+    gap:5px!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    -webkit-overflow-scrolling:touch;
+    padding:2px 0 3px!important;
+    scrollbar-width:none
+  }
+  .nav::-webkit-scrollbar{display:none}
+  .nav button{
+    flex:0 0 auto!important;
+    min-height:42px!important;
+    white-space:nowrap!important;
+    padding:10px 12px!important;
+    margin:0!important;
+    border-radius:10px!important
+  }
+  .mobile-more{display:none!important}
+  .sidebar-bottom,.sidebar .mindset,.sidebar .quote,.sidebar footer{display:none!important}
+  .main{margin-left:0!important;width:100%!important}
+}
+
+/* iPhone: compact brand + five primary tabs + More */
+@media(max-width:700px){
+  .sidebar{
+    position:sticky!important;
+    top:0!important;
+    width:100%!important;
+    height:auto!important;
+    min-height:0!important;
+    z-index:160;
+    padding:7px 9px 9px!important;
+    display:block!important;
+    border-right:0!important;
+    border-bottom:1px solid rgba(255,255,255,.08)
+  }
+  .sidebar .logo{
+    display:flex!important;
+    justify-content:center!important;
+    align-items:center!important;
+    margin:0 0 5px!important;
+    padding:0!important;
+    height:47px!important
+  }
+  .sidebar .exact-v2-logo{width:86px!important;height:47px!important}
+  .nav{
+    display:flex!important;
+    width:100%!important;
+    gap:3px!important;
+    overflow:visible!important;
+    padding:0!important;
+    align-items:center
+  }
+  .nav button{
+    flex:1 1 0!important;
+    min-width:0!important;
+    min-height:40px!important;
+    padding:8px 4px!important;
+    margin:0!important;
+    border-radius:9px!important;
+    font-size:8.5px!important;
+    white-space:nowrap!important;
+    overflow:hidden;
+    text-overflow:ellipsis
+  }
+  .nav button[data-view="analytics"],
+  .nav button[data-view="ai"],
+  .nav button[data-view="weekly"],
+  .nav button[data-view="documents"],
+  .nav button[data-view="setup"]{display:none!important}
+  .mobile-more{display:block!important;flex:1 1 0!important}
+  .mobile-more-btn{width:100%;font-size:8.5px!important;padding:8px 4px!important}
+  .sidebar-bottom,.sidebar .mindset,.sidebar .quote,.sidebar footer{display:none!important}
+  .main{margin-left:0!important;width:100%!important;padding-top:13px!important}
+}
+
 </style>
 </head>
 <body>
@@ -1452,6 +1560,43 @@ function applyMobileTableLabels(){
 }
 const _renderJobsMobileBase=renderJobs;
 renderJobs=function(){_renderJobsMobileBase();applyMobileTableLabels();}
+
+
+/* IPHONE MORE NAVIGATION */
+function isPhoneNav(){return window.matchMedia("(max-width:700px)").matches}
+function positionMobileMoreMenu(){
+  const btn=$("#mobileMoreBtn"), menu=$("#mobileMoreMenu"); if(!btn||!menu)return;
+  const r=btn.getBoundingClientRect();
+  menu.style.top=(r.bottom+6)+"px";
+  menu.style.right=Math.max(8,window.innerWidth-r.right)+"px";
+}
+function closeMobileMore(){
+  $("#mobileMoreMenu")?.classList.remove("show");
+  $("#mobileMoreBtn")?.classList.remove("active");
+}
+$("#mobileMoreBtn")?.addEventListener("click",e=>{
+  e.stopPropagation();
+  const menu=$("#mobileMoreMenu");
+  const opening=!menu.classList.contains("show");
+  if(opening){positionMobileMoreMenu();menu.classList.add("show");$("#mobileMoreBtn").classList.add("active")}
+  else closeMobileMore();
+});
+$("#mobileMoreMenu")?.addEventListener("click",e=>{
+  const b=e.target.closest("button[data-mobile-view]"); if(!b)return;
+  showView(b.dataset.mobileView); closeMobileMore();
+});
+document.addEventListener("click",e=>{
+  if(!e.target.closest("#mobileMore")&&!e.target.closest("#mobileMoreMenu"))closeMobileMore();
+});
+window.addEventListener("resize",()=>{if(!isPhoneNav())closeMobileMore(); else if($("#mobileMoreMenu")?.classList.contains("show"))positionMobileMoreMenu()});
+
+const _showViewResponsiveBase=showView;
+showView=function(id){
+  _showViewResponsiveBase(id);
+  const secondary=["analytics","ai","weekly","documents","setup"].includes(id);
+  $("#mobileMoreBtn")?.classList.toggle("active",isPhoneNav()&&secondary);
+  $$("#mobileMoreMenu button[data-mobile-view]").forEach(b=>b.classList.toggle("active",b.dataset.mobileView===id));
+}
 
 function renderAll(){renderHome();renderSetup();renderDocuments();renderJobs();renderInterviews();renderNetwork();renderOffers();renderAnalytics();populateAIJobs();renderWeekly();}
 const titles={home:["Welcome back","Your job search, prioritized."],jobs:["Jobs","Application Command Center"],interviews:["Interviews","Prep Studio"],network:["Network","Relationship Tracker"],offers:["Offers","Decision Center"],analytics:["Analytics","Search Intelligence"],ai:["AI Toolkit","Personalized prompt builder"],weekly:["Weekly Plan","Your job-search agenda"],documents:["Documents","Resume & Letter Tracker"],setup:["Setup","Personalization Hub"]};
