@@ -202,6 +202,98 @@ textarea{min-height:90px;resize:vertical}
 .backup-meta{font-size:9px;color:var(--muted);margin-top:8px}
 @media(max-width:700px){.safety-grid{grid-template-columns:1fr}.safety-head{display:block}}
 
+
+/* MOBILE + IPAD POLISH PASS */
+html{-webkit-text-size-adjust:100%}
+button,input,select,textarea{-webkit-tap-highlight-color:transparent}
+button,.btn,.job-mini{touch-action:manipulation}
+.table-wrap,.jobs-table-wrap,#offerMatrixWrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{min-width:720px}
+.modal{padding:16px}
+.wizard{max-height:92dvh;overflow:hidden}
+.wiz-body,.interview-scroll{overflow-y:auto;-webkit-overflow-scrolling:touch}
+input,select,textarea{font-size:16px} /* prevents iOS auto-zoom */
+@media(min-width:901px){input,select,textarea{font-size:inherit}}
+
+@media(max-width:1100px){
+  .main{padding-left:24px;padding-right:24px}
+  .grid2{grid-template-columns:1fr}
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+
+@media(max-width:900px){
+  body{overflow-x:hidden}
+  .app{display:block}
+  .sidebar{position:sticky!important;top:0!important;left:auto!important;width:100%!important;height:auto!important;min-height:0!important;z-index:120;padding:10px 14px!important;display:flex!important;align-items:center;gap:12px;border-right:0!important;border-bottom:1px solid rgba(255,255,255,.08)}
+  .sidebar .logo{flex:0 0 auto;margin:0!important;padding:0!important}
+  .sidebar .exact-v2-logo{width:94px!important;height:58px!important;object-fit:contain}
+  .nav{display:flex!important;gap:6px!important;overflow-x:auto!important;-webkit-overflow-scrolling:touch;padding:2px 0 4px!important;flex:1;scrollbar-width:none}
+  .nav::-webkit-scrollbar{display:none}
+  .nav button{flex:0 0 auto!important;white-space:nowrap!important;padding:10px 12px!important;margin:0!important;min-height:42px}
+  .sidebar-bottom,.sidebar .mindset,.sidebar .quote,.sidebar footer{display:none!important}
+  .main{margin-left:0!important;width:100%!important;padding:18px!important}
+  .topbar{position:relative!important;top:auto!important;padding:0 0 16px!important}
+  .topbar h1{font-size:27px!important}
+  .topbar .sub,.page-sub{max-width:100%}
+  .card{border-radius:15px}
+  .card-head{align-items:flex-start;gap:12px;flex-wrap:wrap}
+  .card-head .btn{width:auto}
+  .form-grid{grid-template-columns:1fr!important}
+  .form-grid label[style*="grid-column"]{grid-column:auto!important}
+  .offer-cards{grid-template-columns:1fr!important}
+  .launch-steps{grid-template-columns:1fr}
+}
+
+@media(max-width:600px){
+  .sidebar{padding:8px 10px!important;gap:8px}
+  .sidebar .exact-v2-logo{width:76px!important;height:50px!important}
+  .nav button{padding:9px 10px!important;font-size:9px!important;min-height:40px}
+  .main{padding:13px!important}
+  .topbar h1{font-size:24px!important}
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}
+  .kpi{padding:13px 10px!important;min-width:0}
+  .kpi strong{font-size:25px!important}
+  .kpi small{font-size:8px!important}
+  .card{padding:14px!important}
+  .btn{min-height:42px;padding:10px 12px}
+  .job-mini{min-height:38px;padding:8px 9px}
+  .network-card,.task-card{grid-template-columns:1fr!important}
+  .network-card>div:last-child,.task-card>div:last-child{display:flex;justify-content:flex-start}
+  .modal{padding:8px!important;align-items:flex-end!important}
+  .wizard{width:100%!important;max-height:94dvh!important;border-radius:18px 18px 0 0!important}
+  .wiz-top{padding:18px!important}
+  .wiz-body{padding:16px!important}
+  .wiz-actions{padding:12px 16px!important;gap:8px;flex-wrap:wrap}
+  .wiz-actions>.btn,.wiz-actions>div{flex:1}
+  .wiz-actions>div{display:flex!important}
+  .wiz-actions>div .btn{flex:1}
+  textarea{min-height:110px}
+  .first-launch{padding:0!important;align-items:flex-end!important}
+  .first-launch-card{width:100%!important;max-height:96dvh!important;border-radius:20px 20px 0 0!important}
+  .first-launch-hero,.launch-body{padding:21px!important}
+  .first-launch-hero h2{font-size:27px!important}
+  .launch-actions{align-items:stretch!important}
+  .launch-actions>div:last-child{width:100%;display:grid!important;grid-template-columns:1fr}
+  .launch-actions .btn{width:100%}
+  .safety-grid,.empty-guide{grid-template-columns:1fr!important}
+  .demo-panel-head,.safety-head{display:block!important}
+  .demo-panel-head .btn{margin-top:12px}
+}
+
+/* phone-friendly Jobs cards instead of a squeezed desktop table */
+@media(max-width:700px){
+  #jobsTable thead{display:none}
+  #jobsTable,#jobsTable tbody,#jobsTable tr,#jobsTable td{display:block!important;min-width:0!important;width:100%!important}
+  #jobsTable tr{border:1px solid var(--line);background:#fffdf9;border-radius:13px;margin-bottom:10px;padding:12px}
+  #jobsTable td{border:0!important;padding:5px 0!important;text-align:left!important}
+  #jobsTable td:before{content:attr(data-label);display:block;font-size:8px;letter-spacing:.8px;color:var(--muted);font-weight:800;margin-bottom:2px}
+  #jobsTable td:last-child{display:flex!important;gap:6px!important;flex-wrap:wrap}
+  #jobsTable td:last-child:before{width:100%}
+  #jobsTable select{width:100%!important}
+  #offerMatrixWrap{margin-left:-4px;margin-right:-4px}
+  .matrix{min-width:760px}
+}
+
 </style>
 </head>
 <body>
@@ -1348,6 +1440,18 @@ function saveTaskRecord(){
   if(editingTaskId){const i=data.tasks.findIndex(x=>String(x.id)===String(editingTaskId));if(i>=0)data.tasks[i]={...data.tasks[i],...r}}else data.tasks.unshift(r);
   save();closeTaskModal();renderAll();showView("weekly");toast("Task saved.");
 }
+
+
+/* MOBILE TABLE LABELS */
+function applyMobileTableLabels(){
+  const table=$("#jobsTable"); if(!table)return;
+  const labels=["Company","Role","Stage","Applied","Follow-up","Source","Fit","Actions"];
+  table.querySelectorAll("tbody tr").forEach(tr=>{
+    [...tr.children].forEach((td,i)=>td.setAttribute("data-label",labels[i]||""));
+  });
+}
+const _renderJobsMobileBase=renderJobs;
+renderJobs=function(){_renderJobsMobileBase();applyMobileTableLabels();}
 
 function renderAll(){renderHome();renderSetup();renderDocuments();renderJobs();renderInterviews();renderNetwork();renderOffers();renderAnalytics();populateAIJobs();renderWeekly();}
 const titles={home:["Welcome back","Your job search, prioritized."],jobs:["Jobs","Application Command Center"],interviews:["Interviews","Prep Studio"],network:["Network","Relationship Tracker"],offers:["Offers","Decision Center"],analytics:["Analytics","Search Intelligence"],ai:["AI Toolkit","Personalized prompt builder"],weekly:["Weekly Plan","Your job-search agenda"],documents:["Documents","Resume & Letter Tracker"],setup:["Setup","Personalization Hub"]};
