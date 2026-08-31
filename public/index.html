@@ -1294,6 +1294,7 @@ input,select,textarea{font-size:16px} /* prevents iOS auto-zoom */
           <div class="kpis">
             <div class="kpi"><strong id="weekAppsGoal">0</strong><small>APPLICATION GOAL</small></div>
             <div class="kpi"><strong id="weekNetGoal">0</strong><small>NETWORKING GOAL</small></div>
+            <div class="kpi"><strong id="weekFollowGoal">0</strong><small>FOLLOW-UP GOAL</small></div>
             <div class="kpi"><strong id="weekDone">0%</strong><small>TASKS COMPLETE</small></div>
             <div class="kpi"><strong id="weekOpen">0</strong><small>OPEN TASKS</small></div>
           </div>
@@ -2223,8 +2224,103 @@ function buildAIPrompt(){
 }
 
 /* WEEKLY */
+
+/* AUTO WEEKLY GOAL TASKS */
+function mondayOfWeek(d=new Date()){
+  const x=new Date(d.getFullYear(),d.getMonth(),d.getDate());
+  const day=(x.getDay()+6)%7;
+  x.setDate(x.getDate()-day);
+  x.setHours(12,0,0,0);
+  return x;
+}
+function localISO(d){
+  const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,"0"),day=String(d.getDate()).padStart(2,"0");
+  return `${y}-${m}-${day}`;
+}
+function currentWeekKey(){return localISO(mondayOfWeek())}
+function weeklyFocusDates(){
+  const mon=mondayOfWeek(), selected=Array.isArray(data.settings.searchDays)?data.settings.searchDays:[1,1,1,1,1,0,0];
+  const dates=[];
+  for(let i=0;i<7;i++){
+    if(selected[i]){
+      const d=new Date(mon);d.setDate(mon.getDate()+i);dates.push(d);
+    }
+  }
+  if(!dates.length)dates.push(new Date(mon));
+  return dates;
+}
+function ensureWeeklyGoalTasks(){
+  const week=currentWeekKey();
+  let changed=false;
+
+  /* Remove only obsolete auto-generated quota tasks from older weeks.
+     Manual tasks and linked interview/job tasks are never touched. */
+  const before=data.tasks.length;
+  data.tasks=data.tasks.filter(t=>!t.autoGoal || t.autoWeek===week);
+  if(data.tasks.length!==before)changed=true;
+
+  const focus=weeklyFocusDates();
+  const today=new Date();today.setHours(0,0,0,0);
+  const usable=focus.filter(d=>d>=today);
+  const schedule=usable.length?usable:focus;
+
+  const groups=[
+    {key:"application",type:"Application",goal:Math.max(0,Number(data.settings.goal)||0),
+     title:(i,n)=>`Apply to a target role — ${i} of ${n}`,
+     notes:"Automatically created from your weekly application goal in Setup."},
+    {key:"networking",type:"Networking",goal:Math.max(0,Number(data.settings.networkGoal)||0),
+     title:(i,n)=>`Complete a networking touch — ${i} of ${n}`,
+     notes:"Automatically created from your weekly networking goal in Setup."},
+    {key:"followup",type:"Follow-Up",goal:Math.max(0,Number(data.settings.followGoal)||0),
+     title:(i,n)=>`Complete a follow-up — ${i} of ${n}`,
+     notes:"Automatically created from your weekly follow-up goal in Setup."}
+  ];
+
+  groups.forEach((g,gi)=>{
+    let existing=data.tasks.filter(t=>t.autoGoal===g.key && t.autoWeek===week)
+      .sort((a,b)=>(Number(a.autoIndex)||0)-(Number(b.autoIndex)||0));
+
+    /* If a goal is lowered, keep completed quota items first, then only as many open items as needed. */
+    if(existing.length>g.goal){
+      const keep=[...existing.filter(t=>t.done),...existing.filter(t=>!t.done)].slice(0,g.goal);
+      const keepIds=new Set(keep.map(t=>String(t.id)));
+      data.tasks=data.tasks.filter(t=>!(t.autoGoal===g.key&&t.autoWeek===week) || keepIds.has(String(t.id)));
+      existing=keep;
+      changed=true;
+    }
+
+    for(let i=existing.length;i<g.goal;i++){
+      const due=schedule[(i+gi)%schedule.length];
+      data.tasks.push({
+        id:`auto-${week}-${g.key}-${i+1}`,
+        title:g.title(i+1,g.goal),
+        type:g.type,
+        due:localISO(due),
+        priority:"Medium",
+        jobId:"",
+        notes:g.notes,
+        done:false,
+        autoGoal:g.key,
+        autoWeek:week,
+        autoIndex:i+1
+      });
+      changed=true;
+    }
+
+    /* Keep labels synchronized if the goal changes without destroying completion state. */
+    data.tasks.filter(t=>t.autoGoal===g.key&&t.autoWeek===week).forEach((t,i)=>{
+      const nextTitle=g.title(i+1,g.goal);
+      if(t.title!==nextTitle){t.title=nextTitle;changed=true}
+      t.autoIndex=i+1;
+    });
+  });
+
+  if(changed)save();
+}
+
 function renderWeekly(){
-  $("#weekAppsGoal").textContent=data.settings.goal||0;$("#weekNetGoal").textContent=data.settings.networkGoal||0;
+  ensureWeeklyGoalTasks();
+  $("#weekAppsGoal").textContent=data.settings.goal||0;$("#weekNetGoal").textContent=data.settings.networkGoal||0;if($("#weekFollowGoal"))$("#weekFollowGoal").textContent=data.settings.followGoal||0;
   const total=data.tasks.length, done=data.tasks.filter(t=>t.done).length;$("#weekDone").textContent=total?Math.round(done/total*100)+"%":"0%";$("#weekOpen").textContent=total-done;
   $("#weeklyEmpty").style.display=total?"none":"block";$("#weeklyList").style.display=total?"grid":"none";
   $("#weeklyList").innerHTML=data.tasks.slice().sort((a,b)=>(a.done-b.done)||String(a.due||"9999").localeCompare(String(b.due||"9999"))).map(t=>{
