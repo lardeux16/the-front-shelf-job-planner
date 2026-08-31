@@ -133,6 +133,12 @@ export default {
 
       if(url.pathname==="/api/admin/issue" && req.method==="POST"){
         const body=await req.json().catch(()=>({}));
+        console.log("ADMIN_DIAGNOSTIC", {
+          hasAdminSecret: !!env.ADMIN_SECRET,
+          envLength: typeof env.ADMIN_SECRET === "string" ? env.ADMIN_SECRET.length : null,
+          inputLength: typeof body.adminSecret === "string" ? body.adminSecret.length : null,
+          exactMatch: typeof env.ADMIN_SECRET === "string" && body.adminSecret === env.ADMIN_SECRET
+        });
         if(!env.ADMIN_SECRET || body.adminSecret!==env.ADMIN_SECRET)
           return json({ok:false,error:"Invalid admin secret."},401);
         const email=normEmail(body.email),orderId=String(body.orderId||"").trim();
