@@ -2624,5 +2624,142 @@ document.addEventListener("click", function(e){
 
 </script>
 <input type="file" id="safeImportFile" accept=".json,application/json" style="display:none">
+
+<script>
+/* PRIORITIES RECOVERY LAYER
+   Runs independently so Setup priorities still render even if another feature throws earlier. */
+(function(){
+  const PRIORITY_DEFAULTS={
+    "Work-Life Balance":20,
+    "Growth & Learning":20,
+    "Compensation":15,
+    "Company Culture":10,
+    "Remote Flexibility":20,
+    "Job Stability":10,
+    "Impact & Purpose":5
+  };
+
+  function priorityData(){
+    try{
+      if(typeof data==="undefined" || !data.settings)return PRIORITY_DEFAULTS;
+      const current=data.settings.priorities;
+      if(!current || typeof current!=="object" || !Object.keys(current).length){
+        data.settings.priorities={...PRIORITY_DEFAULTS};
+        if(typeof save==="function")save();
+      }
+      return data.settings.priorities;
+    }catch(e){return PRIORITY_DEFAULTS}
+  }
+
+  function priorityTotal(){
+    return Object.values(priorityData()).reduce((a,b)=>a+(Number(b)||0),0);
+  }
+
+  function renderPriorityRecovery(){
+    const weights=document.getElementById("weights");
+    if(weights){
+      const p=priorityData();
+      weights.innerHTML=Object.entries(p).map(([k,v])=>`
+        <div class="weight">
+          <span>${k}</span>
+          <input type="range" min="0" max="50" step="5" value="${Number(v)||0}" data-weight="${k}">
+          <output>${Number(v)||0}%</output>
+        </div>`).join("");
+      const total=priorityTotal();
+      const totalBox=document.getElementById("weightTotal");
+      const totalOut=totalBox?.querySelector("b");
+      if(totalOut)totalOut.textContent=total+"%";
+      totalBox?.classList.toggle("bad",total!==100);
+    }
+
+    const days=document.getElementById("dayPicker");
+    if(days && !days.children.length && typeof data!=="undefined"){
+      const arr=Array.isArray(data.settings?.searchDays)?data.settings.searchDays:[1,1,1,1,1,0,0];
+      days.innerHTML=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map((d,i)=>
+        `<button type="button" class="day ${arr[i]?"on":""}" data-day="${i}">${d}</button>`
+      ).join("");
+    }
+
+    const setupSteps=document.getElementById("setupSteps");
+    if(setupSteps && !setupSteps.children.length && typeof setupChecks==="function"){
+      const c=setupChecks();
+      const labels=[
+        ["Tell us about yourself","Name and location"],
+        ["Define your target role","What are you aiming for?"],
+        ["Set a weekly goal","Choose a sustainable target"],
+        ["Set your salary target","Know your minimum"],
+        ["Choose focus days","Protect your time"],
+        ["Weight job priorities","Power your future Fit Score"]
+      ];
+      setupSteps.innerHTML=labels.map((x,i)=>`<div class="step ${c[i]?"done":""}"><div class="num">${c[i]?"✓":i+1}</div><div><b>${x[0]}</b><small>${x[1]}</small></div><span class="pill">${c[i]?"DONE":"TO DO"}</span></div>`).join("");
+    }
+
+    const summary=document.getElementById("summary");
+    if(summary && !summary.children.length && typeof data!=="undefined"){
+      const s=data.settings||{};
+      const dayNames=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+      const daysTxt=dayNames.filter((d,i)=>s.searchDays?.[i]).join(", ")||"Not set";
+      summary.innerHTML=`<div><small class="eyebrow">PRIMARY ROLE</small><b style="display:block;margin-top:4px">${s.targetTitle||"Not set"}</b></div>
+      <div><small class="eyebrow">SALARY FLOOR</small><b style="display:block;margin-top:4px">${s.minSalary?"$"+Number(s.minSalary).toLocaleString()+"+":"Not set"}</b></div>
+      <div><small class="eyebrow">WORK STYLE</small><b style="display:block;margin-top:4px">${s.arrangement||"Not set"}</b></div>
+      <div><small class="eyebrow">FOCUS DAYS</small><b style="display:block;margin-top:4px">${daysTxt}</b></div>`;
+    }
+  }
+
+  document.addEventListener("input",function(e){
+    const el=e.target.closest?.('#weights input[data-weight]');
+    if(!el)return;
+    try{
+      if(typeof data!=="undefined"){
+        data.settings.priorities=data.settings.priorities||{...PRIORITY_DEFAULTS};
+        data.settings.priorities[el.dataset.weight]=Number(el.value)||0;
+      }
+      const out=el.nextElementSibling;if(out)out.textContent=el.value+"%";
+      const total=priorityTotal();
+      const totalBox=document.getElementById("weightTotal");
+      const b=totalBox?.querySelector("b");if(b)b.textContent=total+"%";
+      totalBox?.classList.toggle("bad",total!==100);
+    }catch(err){}
+  });
+
+  document.addEventListener("click",function(e){
+    const day=e.target.closest?.('#dayPicker [data-day]');
+    if(day && typeof data!=="undefined"){
+      e.preventDefault();
+      const i=Number(day.dataset.day);
+      data.settings.searchDays=Array.isArray(data.settings.searchDays)?data.settings.searchDays:[1,1,1,1,1,0,0];
+      data.settings.searchDays[i]=data.settings.searchDays[i]?0:1;
+      if(typeof save==="function")save();
+      renderPriorityRecovery();
+      return;
+    }
+
+    const setupNav=e.target.closest?.('[data-view="setup"],[data-jump="setup"],#homeEditSetup');
+    if(setupNav)setTimeout(renderPriorityRecovery,20);
+  });
+
+  const saveBtn=document.getElementById("saveSetup");
+  if(saveBtn){
+    saveBtn.addEventListener("click",function(){
+      setTimeout(()=>{
+        try{
+          if(typeof data!=="undefined"){
+            const p={};
+            document.querySelectorAll('#weights input[data-weight]').forEach(x=>p[x.dataset.weight]=Number(x.value)||0);
+            if(Object.keys(p).length)data.settings.priorities=p;
+            if(typeof save==="function")save();
+          }
+        }catch(e){}
+      },0);
+    },true);
+  }
+
+  // Render immediately and once more after the app's own initialization.
+  renderPriorityRecovery();
+  setTimeout(renderPriorityRecovery,150);
+  setTimeout(renderPriorityRecovery,700);
+})();
+</script>
+
 </body>
 </html>
