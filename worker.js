@@ -367,6 +367,22 @@ export default {
         return json({ok:true,fulfilled:true});
       }
 
+      if(url.pathname==="/api/admin/test-email" && req.method==="POST"){
+        const rl=await rateLimit(env,req,"admin-test-email",5,600);
+        if(!rl.allowed)return json({ok:false,error:"Too many test-email attempts. Try again later."},429);
+        const body=await req.json().catch(()=>({}));
+        if(!env.ADMIN_SECRET||typeof body.adminSecret!=="string"||body.adminSecret!==env.ADMIN_SECRET)
+          return json({ok:false,error:"Invalid admin secret."},401);
+        const email=normEmail(body.email);
+        if(!validEmail(email))return json({ok:false,error:"Enter a valid email."},400);
+        const orderId=`TEST-${Date.now()}`;
+        const code=await signPayload(env.LICENSE_SIGNING_SECRET,{
+          email,orderId,source:"admin-test",v:1,issuedAt:Date.now()
+        },"license");
+        const sent=await sendActivationEmail(env,{to:email,code,orderId});
+        return json({ok:true,email,orderId,resendId:sent.id});
+      }
+
       if(url.pathname==="/api/admin/issue" && req.method==="POST"){
         const rl=await rateLimit(env,req,"admin-issue",8,600);
         if(!rl.allowed)return json({ok:false,error:"Too many attempts. Try again later."},429,{"retry-after":"600"});
