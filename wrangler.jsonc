@@ -1,5 +1,13 @@
 {
   "name": "the-front-shelf-job-planner",
   "main": "worker.js",
-  "compatibility_date": "2026-08-31"
+  "compatibility_date": "2026-08-31",
+  "secrets": {
+    "required": [
+      "ADMIN_SECRET",
+      "LICENSE_SIGNING_SECRET",
+      "UPSTASH_REDIS_REST_URL",
+      "UPSTASH_REDIS_REST_TOKEN"
+    ]
+  }
 }
