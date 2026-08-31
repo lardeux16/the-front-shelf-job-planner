@@ -717,7 +717,7 @@ input,select,textarea{font-size:16px} /* prevents iOS auto-zoom */
 
 
 
-</style>
+.cue-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:14px}.cue-card{background:#fffdf9;border:1px solid var(--line);border-radius:15px;padding:17px;min-height:205px;display:flex;flex-direction:column;gap:10px}.cue-card.mastered{background:#f0eadf}.cue-q{font-family:var(--serif);font-size:17px;line-height:1.28;color:var(--espresso)}.cue-a{font-size:11px;line-height:1.55;color:var(--muted);white-space:pre-wrap;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}.cue-meta,.cue-card-actions{display:flex;gap:6px;flex-wrap:wrap}.cue-meta{margin-top:auto}.cue-pill{font-size:8px;font-weight:900;letter-spacing:.55px;padding:5px 7px;border-radius:999px;background:#eadfd1;color:var(--espresso)}.cue-empty{text-align:center;padding:40px 18px;color:var(--muted)}.cue-modal-card,.cue-study-card{max-width:760px}.cue-study-progress{font-size:9px;font-weight:900;letter-spacing:1px;color:var(--muted);margin-bottom:18px}.cue-study-question{font-family:var(--serif);font-size:27px;line-height:1.25;color:var(--espresso);padding:25px;background:#f4eadf;border-radius:15px}.cue-study-answer{margin-top:16px;padding:22px;background:#fffdf9;border:1px solid var(--line);border-radius:15px;white-space:pre-wrap;font-size:13px;line-height:1.65}@media(max-width:1100px){.cue-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:700px){.cue-grid{grid-template-columns:1fr}#nav button[data-view="cuecards"]{display:none!important}.cue-study-question{font-size:22px}}</style>
 </head>
 <body>
 <div class="app">
@@ -726,7 +726,7 @@ input,select,textarea{font-size:16px} /* prevents iOS auto-zoom */
     <nav class="nav" id="nav">
       <button class="active" data-view="home"><span>⌂</span><span class="txt"><b>HOME</b><small>Your overview</small></span></button>
       <button data-view="jobs"><span>▣</span><span class="txt"><b>JOBS</b><small>Application tracker</small></span></button>
-      <button data-view="interviews"><span>◴</span><span class="txt"><b>INTERVIEWS</b><small>Prep studio</small></span></button>
+      <button data-view="interviews"><span>◴</span><span class="txt"><b>INTERVIEWS</b><small>Prep studio</small></span></button><button data-view="cuecards"><span>▤</span><span class="txt"><b>CUE CARDS</b><small>Interview study deck</small></span></button>
       <button data-view="network"><span>◎</span><span class="txt"><b>NETWORK</b><small>Relationships</small></span></button>
       <button data-view="offers"><span>◇</span><span class="txt"><b>OFFERS</b><small>Decision center</small></span></button>
       <button data-view="analytics"><span>⌁</span><span class="txt"><b>ANALYTICS</b><small>Search intelligence</small></span></button>
@@ -954,7 +954,7 @@ input,select,textarea{font-size:16px} /* prevents iOS auto-zoom */
                   <option value="resume">Resume Tailoring</option>
                   <option value="cover">Cover Letter</option>
                   <option value="analysis">Job Analysis</option>
-                  <option value="interview">Interview Prep</option>
+                  <option value="interview">Interview Prep</option><option value="interviewquestions">Role-Specific Interview Questions</option>
                   <option value="networking">Networking</option>
                   <option value="followup">Follow-Up</option>
                   <option value="negotiation">Negotiation</option>
@@ -1299,7 +1299,7 @@ input,select,textarea{font-size:16px} /* prevents iOS auto-zoom */
 
 
 <div class="mobile-more-menu" id="mobileMoreMenu">
-  <button type="button" data-mobile-view="analytics">ANALYTICS</button>
+  <button type="button" data-mobile-view="cuecards">CUE CARDS</button><button type="button" data-mobile-view="analytics">ANALYTICS</button>
   <button type="button" data-mobile-view="ai">AI TOOLKIT</button>
   <button type="button" data-mobile-view="weekly">WEEKLY PLAN</button>
   <button type="button" data-mobile-view="documents">DOCUMENTS</button>
@@ -1857,6 +1857,7 @@ function buildAIPrompt(){
     cover:"Draft a concise, specific cover-letter strategy and first draft based on my background and this opportunity. Avoid generic enthusiasm and do not invent facts.",
     analysis:"Analyze this opportunity for fit. Separate strong matches, possible gaps, questions to investigate, and red flags. Give me a practical recommendation.",
     interview:"Create an interview prep plan. Give likely questions, what the interviewer is probably testing, STAR-story angles, smart questions to ask, and a concise salary-answer strategy.",
+    interviewquestions:"Act as an experienced hiring manager. Create 15 realistic interview questions specifically for this role and opportunity. Include a balanced mix of role-specific, behavioral, situational, technical/skills-based, and company-specific questions. Group them by category. Make each question specific enough to prepare a strong answer. Do not provide sample answers because I will write my own answers in Cue Cards.",
     networking:"Help me write a natural networking message related to this opportunity. Keep it specific, low-pressure and human.",
     followup:"Draft a professional follow-up message for this opportunity. Make it warm, concise and confident without sounding pushy.",
     negotiation:"Help me prepare an offer-negotiation strategy. Identify what to negotiate, give a script, and suggest how to respond to common pushback.",
@@ -1931,7 +1932,7 @@ window.addEventListener("resize",()=>{if(!isPhoneNav())closeMobileMore(); else i
 const _showViewResponsiveBase=showView;
 showView=function(id){
   _showViewResponsiveBase(id);
-  const secondary=["analytics","ai","weekly","documents","setup"].includes(id);
+  const secondary=["cuecards","analytics","ai","weekly","documents","setup"].includes(id);
   $("#mobileMoreBtn")?.classList.toggle("active",isPhoneNav()&&secondary);
   $$("#mobileMoreMenu button[data-mobile-view]").forEach(b=>b.classList.toggle("active",b.dataset.mobileView===id));
 }
@@ -1940,7 +1941,7 @@ showView=function(id){
 
 
 
-function renderAll(){renderHome();renderSetup();renderDocuments();renderJobs();renderInterviews();renderNetwork();renderOffers();renderAnalytics();populateAIJobs();renderWeekly();}
+let editingCueId=null,cueStudyIndex=0,cueStudyDeck=[];function cueEsc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}function cueList(){data.cueCards=Array.isArray(data.cueCards)?data.cueCards:[];const f=$("#cueRoleFilter")?.value||"";return data.cueCards.filter(c=>!f||c.role===f)}function renderCueCards(){data.cueCards=Array.isArray(data.cueCards)?data.cueCards:[];const roles=[...new Set(data.cueCards.map(c=>c.role).filter(Boolean))].sort(),filter=$("#cueRoleFilter");if(filter){const cur=filter.value;filter.innerHTML='<option value="">All roles</option>'+roles.map(r=>`<option ${r===cur?"selected":""}>${cueEsc(r)}</option>`).join("")}if($("#cueTotal"))$("#cueTotal").textContent=data.cueCards.length;if($("#cueMastered"))$("#cueMastered").textContent=data.cueCards.filter(c=>c.mastered).length;if($("#cueReview"))$("#cueReview").textContent=data.cueCards.filter(c=>!c.mastered).length;if($("#cueRoles"))$("#cueRoles").textContent=roles.length;const grid=$("#cueCardsGrid");if(!grid)return;const cards=cueList();if(!cards.length){grid.innerHTML=`<div class="cue-empty" style="grid-column:1/-1"><b>No cue cards yet.</b><div style="margin-top:6px">Generate role-specific interview questions in the AI Toolkit, then add each question here with your own answer.</div><button class="btn" data-jump="ai" style="margin-top:16px">OPEN AI TOOLKIT</button></div>`;return}grid.innerHTML=cards.map(c=>`<article class="cue-card ${c.mastered?"mastered":""}"><div class="cue-q">${cueEsc(c.question)}</div><div class="cue-a">${cueEsc(c.answer||"No answer written yet.")}</div><div class="cue-meta"><span class="cue-pill">${cueEsc(c.role||"General")}</span><span class="cue-pill">${cueEsc(c.category||"Role-specific")}</span><span class="cue-pill">${c.mastered?"MASTERED ✓":"TO REVIEW"}</span></div><div class="cue-card-actions"><button class="job-mini" data-cue-edit="${c.id}">EDIT</button><button class="job-mini" data-cue-toggle="${c.id}">${c.mastered?"REVIEW AGAIN":"MARK MASTERED"}</button></div></article>`).join("")}function openCueModal(id=null){editingCueId=id;const c=id?data.cueCards.find(x=>x.id===id):null;$("#cueModalTitle").textContent=c?"Edit cue card":"New cue card";$("#cueRole").value=c?.role||data.settings.targetTitle||"";$("#cueCategory").value=c?.category||"Role-specific";$("#cueQuestion").value=c?.question||"";$("#cueAnswer").value=c?.answer||"";$("#cueNotes").value=c?.notes||"";$("#cueDelete").style.display=c?"inline-flex":"none";$("#cueModal").classList.add("show")}function closeCueModal(){$("#cueModal")?.classList.remove("show");editingCueId=null}function saveCueCard(){const q=$("#cueQuestion").value.trim();if(!q){toast("Add an interview question first.");return}const old=editingCueId?data.cueCards.find(x=>x.id===editingCueId):null,c={id:editingCueId||uid(),role:$("#cueRole").value.trim()||"General",category:$("#cueCategory").value,question:q,answer:$("#cueAnswer").value.trim(),notes:$("#cueNotes").value.trim(),mastered:old?.mastered||false,updatedAt:new Date().toISOString()};if(editingCueId){const i=data.cueCards.findIndex(x=>x.id===editingCueId);if(i>=0)data.cueCards[i]=c}else data.cueCards.unshift(c);save();closeCueModal();renderCueCards();toast("Cue card saved.")}function startCueStudy(){cueStudyDeck=cueList();if(!cueStudyDeck.length){toast("Add at least one cue card first.");return}cueStudyIndex=0;$("#cueStudyModal").classList.add("show");renderCueStudy()}function renderCueStudy(){const c=cueStudyDeck[cueStudyIndex];if(!c)return;$("#cueStudyRole").textContent=c.role||"Interview Cue Cards";$("#cueStudyProgress").textContent=`CARD ${cueStudyIndex+1} OF ${cueStudyDeck.length} · ${c.category||"INTERVIEW PREP"}${c.mastered?" · MASTERED":""}`;$("#cueStudyQuestion").textContent=c.question;$("#cueStudyAnswer").textContent=c.answer||"No answer written yet.";$("#cueStudyAnswer").style.display="none";$("#cueReveal").style.display="inline-flex"}function setCueMastery(v){const c=cueStudyDeck[cueStudyIndex],r=data.cueCards.find(x=>x.id===c?.id);if(r)r.mastered=v;if(c)c.mastered=v;save();renderCueCards();renderCueStudy()}$("#addCueBtn")?.addEventListener("click",()=>openCueModal());$("#cueClose")?.addEventListener("click",closeCueModal);$("#cueCancel")?.addEventListener("click",closeCueModal);$("#cueSave")?.addEventListener("click",saveCueCard);$("#cueDelete")?.addEventListener("click",()=>{if(editingCueId&&confirm("Delete this cue card?")){data.cueCards=data.cueCards.filter(x=>x.id!==editingCueId);save();closeCueModal();renderCueCards()}});$("#cueRoleFilter")?.addEventListener("change",renderCueCards);$("#cueCardsGrid")?.addEventListener("click",e=>{const a=e.target.closest("[data-cue-edit]"),b=e.target.closest("[data-cue-toggle]");if(a)openCueModal(a.dataset.cueEdit);if(b){const c=data.cueCards.find(x=>x.id===b.dataset.cueToggle);if(c){c.mastered=!c.mastered;save();renderCueCards()}}});$("#cueStudyBtn")?.addEventListener("click",startCueStudy);$("#cueStudyClose")?.addEventListener("click",()=>$("#cueStudyModal").classList.remove("show"));$("#cueReveal")?.addEventListener("click",()=>{$("#cueStudyAnswer").style.display="block";$("#cueReveal").style.display="none"});$("#cuePrev")?.addEventListener("click",()=>{cueStudyIndex=(cueStudyIndex-1+cueStudyDeck.length)%cueStudyDeck.length;renderCueStudy()});$("#cueNext")?.addEventListener("click",()=>{cueStudyIndex=(cueStudyIndex+1)%cueStudyDeck.length;renderCueStudy()});$("#cueMaster")?.addEventListener("click",()=>setCueMastery(true));$("#cueNeedsReview")?.addEventListener("click",()=>setCueMastery(false));function renderAll(){renderHome();renderSetup();renderDocuments();renderJobs();renderInterviews();renderNetwork();renderOffers();renderAnalytics();populateAIJobs();renderWeekly();renderCueCards();}
 const titles={home:["Welcome back","Your job search, prioritized."],jobs:["Jobs","Application Command Center"],interviews:["Interviews","Prep Studio"],network:["Network","Relationship Tracker"],offers:["Offers","Decision Center"],analytics:["Analytics","Search Intelligence"],ai:["AI Toolkit","Personalized prompt builder"],weekly:["Weekly Plan","Your job-search agenda"],documents:["Documents","Resume & Letter Tracker"],setup:["Setup","Personalization Hub"]};
 function showView(id){$$(".view").forEach(v=>v.classList.toggle("active",v.id===id));$$(".nav button").forEach(b=>b.classList.toggle("active",b.dataset.view===id));$("#pageTitle").textContent=titles[id][0];$("#pageSub").textContent=titles[id][1];window.scrollTo({top:0,behavior:"smooth"});}
 $("#nav").onclick=e=>{const b=e.target.closest("button[data-view]");if(b)showView(b.dataset.view)};$$("[data-jump]").forEach(b=>b.onclick=()=>showView(b.dataset.jump));
@@ -2021,21 +2022,61 @@ $("#importData").onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new
 $("#resetData").onclick=()=>{if(confirm("Reset all planner data on this device? This cannot be undone unless you exported a backup.")){localStorage.removeItem(KEY);location.reload()}};
 let wizStep=0;
 const wizSteps=[
-()=>`<div class="eyebrow">STEP 1 OF 6</div><h2 style="margin-top:5px">Tell us about you</h2><p class="sub">Personalize the planner so it feels like yours.</p><div class="form-grid" style="margin-top:16px"><label>Your name<input id="wName" value="${data.settings.name||""}" placeholder="Sarah"></label><label>Location<input id="wLocation" value="${data.settings.location||""}" placeholder="Montreal, QC"></label></div>`,
-()=>`<div class="eyebrow">STEP 2 OF 6</div><h2 style="margin-top:5px">Define your target</h2><p class="sub">What role are you moving toward?</p><div class="form-grid" style="margin-top:16px"><label>Primary target role<input id="wRole" value="${data.settings.targetTitle||""}"></label><label>Experience level<select id="wExp">${["Entry-level","Mid-level","Senior","Career change"].map(x=>`<option ${x===data.settings.experience?"selected":""}>${x}</option>`).join("")}</select></label></div>`,
-()=>`<div class="eyebrow">STEP 3 OF 6</div><h2 style="margin-top:5px">Set sustainable goals</h2><p class="sub">Quality over panic-applying.</p><div class="form-grid" style="margin-top:16px"><label>Applications / week<input id="wGoal" type="number" value="${data.settings.goal||5}"></label><label>Networking / week<input id="wNet" type="number" value="${data.settings.networkGoal||2}"></label></div>`,
-()=>`<div class="eyebrow">STEP 4 OF 6</div><h2 style="margin-top:5px">Set your minimums</h2><p class="sub">Your salary floor and work style help future Fit Scores.</p><div class="form-grid" style="margin-top:16px"><label>Minimum salary<input id="wSalary" type="number" value="${data.settings.minSalary||60000}"></label><label>Work style<select id="wStyle">${["Remote","Hybrid","On-site","Flexible"].map(x=>`<option ${x===data.settings.arrangement?"selected":""}>${x}</option>`).join("")}</select></label></div>`,
-()=>`<div class="eyebrow">STEP 5 OF 6</div><h2 style="margin-top:5px">Choose your focus days</h2><p class="sub">Your consistency score should respect the days you actually planned to search.</p><div class="days" style="margin-top:18px">${["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map((d,i)=>`<button class="day ${data.settings.searchDays[i]?"on":""}" data-wday="${i}">${d}</button>`).join("")}</div>`,
-()=>`<div class="eyebrow">STEP 6 OF 6</div><h2 style="margin-top:5px">You're ready.</h2><p class="sub">Your dashboard will now use your target role, goals, focus days and priorities. You can fine-tune priority weights anytime in Setup.</p><div class="card" style="margin-top:16px;background:#efe4d4"><b>${data.settings.targetTitle||"Your target role"}</b><div class="meta">${data.settings.arrangement} · ${data.settings.minSalary?"$"+Number(data.settings.minSalary).toLocaleString()+"+":"Salary not set"} · ${data.settings.goal||5} applications/week</div></div>`
+()=>`<div class="eyebrow">STEP 1 OF 7</div><h2 style="margin-top:5px">Tell us about you</h2><p class="sub">Personalize the planner so it feels like yours.</p><div class="form-grid" style="margin-top:16px"><label>Your name<input id="wName" value="${data.settings.name||""}" placeholder="Sarah"></label><label>Location<input id="wLocation" value="${data.settings.location||""}" placeholder="Montreal, QC"></label></div>`,
+()=>`<div class="eyebrow">STEP 2 OF 7</div><h2 style="margin-top:5px">Define your target</h2><p class="sub">What role are you moving toward?</p><div class="form-grid" style="margin-top:16px"><label>Primary target role<input id="wRole" value="${data.settings.targetTitle||""}"></label><label>Experience level<select id="wExp">${["Entry-level","Mid-level","Senior","Career change"].map(x=>`<option ${x===data.settings.experience?"selected":""}>${x}</option>`).join("")}</select></label></div>`,
+()=>`<div class="eyebrow">STEP 3 OF 7</div><h2 style="margin-top:5px">Set sustainable goals</h2><p class="sub">Quality over panic-applying.</p><div class="form-grid" style="margin-top:16px"><label>Applications / week<input id="wGoal" type="number" value="${data.settings.goal||5}"></label><label>Networking / week<input id="wNet" type="number" value="${data.settings.networkGoal||2}"></label></div>`,
+()=>`<div class="eyebrow">STEP 4 OF 7</div><h2 style="margin-top:5px">Set your minimums</h2><p class="sub">Your salary floor and work style help future Fit Scores.</p><div class="form-grid" style="margin-top:16px"><label>Minimum salary<input id="wSalary" type="number" value="${data.settings.minSalary||60000}"></label><label>Work style<select id="wStyle">${["Remote","Hybrid","On-site","Flexible"].map(x=>`<option ${x===data.settings.arrangement?"selected":""}>${x}</option>`).join("")}</select></label></div>`,
+()=>`<div class="eyebrow">STEP 5 OF 7</div><h2 style="margin-top:5px">Choose your focus days</h2><p class="sub">Your consistency score should respect the days you actually planned to search.</p><div class="days" style="margin-top:18px">${["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map((d,i)=>`<button type="button" class="day ${data.settings.searchDays[i]?"on":""}" data-wday="${i}">${d}</button>`).join("")}</div>`,
+()=>`<div class="eyebrow">STEP 6 OF 7</div><h2 style="margin-top:5px">What matters most in your next job?</h2><p class="sub">These weights power your personalized offer scores. Adjust them until the total equals exactly 100%.</p><div id="wizWeights" style="margin-top:16px">${Object.entries(data.settings.priorities||{}).map(([k,v])=>`<div class="weight"><span>${k}</span><input type="range" min="0" max="50" step="5" value="${v}" data-wiz-weight="${k}"><output>${v}%</output></div>`).join("")}</div><div class="weight-total" style="margin-top:14px"><span>TOTAL WEIGHT</span><b id="wizWeightTotal">${Object.values(data.settings.priorities||{}).reduce((a,b)=>a+(+b||0),0)}%</b></div><div class="meta" id="wizWeightHelp" style="margin-top:8px">Continue unlocks when your total is 100%.</div>`,
+()=>`<div class="eyebrow">STEP 7 OF 7</div><h2 style="margin-top:5px">You're ready.</h2><p class="sub">Your dashboard will now use your target role, goals, focus days and the priorities you chose to personalize Fit and Offer scores.</p><div class="card" style="margin-top:16px;background:#efe4d4"><b>${data.settings.targetTitle||"Your target role"}</b><div class="meta">${data.settings.arrangement} · ${data.settings.minSalary?"$"+Number(data.settings.minSalary).toLocaleString()+"+":"Salary not set"} · ${data.settings.goal||5} applications/week</div></div>`
 ];
+function wizardPriorityTotal(){
+  return Object.values(data.settings.priorities||{}).reduce((a,b)=>a+(+b||0),0);
+}
+function syncWizardPriorityState(){
+  if(wizStep!==5)return;
+  const total=wizardPriorityTotal();
+  const totalEl=$("#wizWeightTotal"),help=$("#wizWeightHelp"),next=$("#wizNext");
+  if(totalEl) totalEl.textContent=total+"%";
+  if(help) help.textContent=total===100?"Perfect — your priorities are balanced.":"Adjust the sliders until the total equals 100% to continue.";
+  if(next){next.disabled=total!==100;next.style.opacity=total===100?"1":".48";next.style.cursor=total===100?"pointer":"not-allowed";}
+}
 function saveWizStep(){
  const s=data.settings;
  if(wizStep===0){s.name=$("#wName")?.value.trim()||s.name;s.location=$("#wLocation")?.value.trim()||s.location}
  if(wizStep===1){s.targetTitle=$("#wRole")?.value.trim()||s.targetTitle;s.experience=$("#wExp")?.value||s.experience}
  if(wizStep===2){s.goal=+$("#wGoal")?.value||s.goal;s.networkGoal=+$("#wNet")?.value||s.networkGoal}
  if(wizStep===3){s.minSalary=+$("#wSalary")?.value||s.minSalary;s.arrangement=$("#wStyle")?.value||s.arrangement}
+ if(wizStep===5){
+   const p={};
+   $$("#wizWeights input[data-wiz-weight]").forEach(x=>p[x.dataset.wizWeight]=+x.value);
+   if(Object.keys(p).length)s.priorities=p;
+ }
 }
-function renderWiz(){$("#wizBody").innerHTML=wizSteps[wizStep]();$("#wizDots").innerHTML=wizSteps.map((_,i)=>`<i class="${i<=wizStep?"on":""}"></i>`).join("");$("#wizBack").style.visibility=wizStep===0?"hidden":"visible";$("#wizNext").textContent=wizStep===wizSteps.length-1?"BUILD MY DASHBOARD →":"CONTINUE →";$("#wizBody").onclick=e=>{if(e.target.matches("[data-wday]")){const i=+e.target.dataset.wday;data.settings.searchDays[i]=data.settings.searchDays[i]?0:1;renderWiz()}}}
+function renderWiz(){
+  $("#wizBody").innerHTML=wizSteps[wizStep]();
+  $("#wizDots").innerHTML=wizSteps.map((_,i)=>`<i class="${i<=wizStep?"on":""}"></i>`).join("");
+  $("#wizBack").style.visibility=wizStep===0?"hidden":"visible";
+  $("#wizNext").textContent=wizStep===wizSteps.length-1?"BUILD MY DASHBOARD →":"CONTINUE →";
+  $("#wizBody").onclick=e=>{
+    if(e.target.matches("[data-wday]")){
+      const i=+e.target.dataset.wday;
+      data.settings.searchDays[i]=data.settings.searchDays[i]?0:1;
+      renderWiz();
+    }
+  };
+  $("#wizBody").oninput=e=>{
+    if(e.target.matches("[data-wiz-weight]")){
+      const key=e.target.dataset.wizWeight;
+      const val=+e.target.value;
+      data.settings.priorities[key]=val;
+      const out=e.target.parentElement?.querySelector("output");
+      if(out)out.textContent=val+"%";
+      syncWizardPriorityState();
+    }
+  };
+  syncWizardPriorityState();
+}
 function openWizard(){wizStep=0;$("#wizard").classList.add("show");renderWiz()}
 
 /* NEXT MOVE CTA — delegated so Home re-renders can never break it */
@@ -2057,7 +2098,7 @@ document.addEventListener("click",function(e){
   showView("jobs");
 },true);
 
-$("#openWizard").onclick=openWizard;$("#wizBack").onclick=()=>{saveWizStep();wizStep=Math.max(0,wizStep-1);renderWiz()};$("#wizNext").onclick=()=>{saveWizStep();if(wizStep<wizSteps.length-1){wizStep++;renderWiz()}else{data.settings.wizardSeen=true;data.settings.setupComplete=setupChecks().every(Boolean);save();$("#wizard").classList.remove("show");renderAll();showView("home");toast("Your dashboard is ready.")}};
+$("#openWizard").onclick=openWizard;$("#wizBack").onclick=()=>{saveWizStep();wizStep=Math.max(0,wizStep-1);renderWiz()};$("#wizNext").onclick=()=>{saveWizStep();if(wizStep===5&&wizardPriorityTotal()!==100){toast("Your job priorities need to total 100% before continuing.");syncWizardPriorityState();return}if(wizStep<wizSteps.length-1){wizStep++;renderWiz()}else{data.settings.wizardSeen=true;data.settings.setupComplete=setupChecks().every(Boolean);save();$("#wizard").classList.remove("show");renderAll();showView("home");toast("Your dashboard is ready.")}};
 
 const FIRST_LAUNCH_KEY="frontShelfJobSearchSystemV1_welcomeSeen";
 function showFirstLaunchIfNeeded(){
@@ -2218,5 +2259,5 @@ document.addEventListener("click", function(e){
 
 </script>
 <input type="file" id="safeImportFile" accept=".json,application/json" style="display:none">
-</body>
-</html>
+<div class="modal" id="cueModal"><div class="wizard cue-modal-card"><div class="wiz-top"><div><div class="eyebrow">INTERVIEW CUE CARD</div><h2 id="cueModalTitle">New cue card</h2></div><button class="x" id="cueClose">×</button></div><div class="wiz-body"><div class="form-grid"><label>Role / interview deck<input id="cueRole" placeholder="e.g. Content Researcher"></label><label>Category<select id="cueCategory"><option>Role-specific</option><option>Behavioral</option><option>Technical</option><option>Situational</option><option>Company-specific</option><option>Questions to ask them</option></select></label><label style="grid-column:1/-1">Interview question<textarea id="cueQuestion" placeholder="Paste one interview question here..."></textarea></label><label style="grid-column:1/-1">Your answer / talking points<textarea id="cueAnswer" placeholder="Write the answer you want to practice. Bullet points are perfect."></textarea></label><label style="grid-column:1/-1">Extra notes<textarea id="cueNotes" placeholder="Examples, metrics, STAR story reminders..."></textarea></label></div></div><div class="wiz-actions"><button class="btn ghost" id="cueDelete" style="display:none">DELETE</button><div style="margin-left:auto;display:flex;gap:8px"><button class="btn ghost" id="cueCancel">CANCEL</button><button class="btn" id="cueSave">SAVE CUE CARD</button></div></div></div></div><div class="modal" id="cueStudyModal"><div class="wizard cue-study-card"><div class="wiz-top"><div><div class="eyebrow">STUDY MODE</div><h2 id="cueStudyRole">Interview Cue Cards</h2></div><button class="x" id="cueStudyClose">×</button></div><div class="wiz-body"><div class="cue-study-progress" id="cueStudyProgress"></div><div class="cue-study-question" id="cueStudyQuestion"></div><button class="btn ghost" id="cueReveal" style="margin-top:16px">REVEAL MY ANSWER</button><div class="cue-study-answer" id="cueStudyAnswer" style="display:none"></div></div><div class="wiz-actions"><button class="btn ghost" id="cuePrev">← PREVIOUS</button><div style="margin-left:auto;display:flex;gap:8px"><button class="btn ghost" id="cueNeedsReview">NEEDS REVIEW</button><button class="btn" id="cueMaster">MASTERED ✓</button><button class="btn ghost" id="cueNext">NEXT →</button></div></div></div></div></body>
+</html><section class="view" id="view-cuecards"><div class="topbar"><div><div class="eyebrow">INTERVIEW PREP</div><h1>Cue Cards</h1><p class="sub">Turn interview questions into a study deck. Write your answer, practice it, and mark cards as mastered when you feel ready.</p></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost" id="cueStudyBtn">STUDY MODE</button><button class="btn" id="addCueBtn">+ NEW CUE CARD</button></div></div><div class="kpis"><div class="kpi"><small>TOTAL CARDS</small><strong id="cueTotal">0</strong></div><div class="kpi"><small>TO REVIEW</small><strong id="cueReview">0</strong></div><div class="kpi"><small>MASTERED</small><strong id="cueMastered">0</strong></div><div class="kpi"><small>ROLE DECKS</small><strong id="cueRoles">0</strong></div></div><div class="card"><div class="card-head"><div><div class="eyebrow">YOUR DECK</div><h3>Interview question library</h3></div><select id="cueRoleFilter" style="max-width:230px"><option value="">All roles</option></select></div><div id="cueCardsGrid" class="cue-grid"></div></div></section>
