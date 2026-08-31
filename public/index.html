@@ -2869,6 +2869,11 @@ function backupFilename(){
   return `The_Front_Shelf_Backup_${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}_${pad2(d.getHours())}-${pad2(d.getMinutes())}.json`;
 }
 function exportSafeBackup(){
+  try{
+    const latest=JSON.stringify(data);
+    localStorage.setItem("frontShelfJobSearchSystemV1",latest);
+    localStorage.setItem("frontShelfJobSearchSystemV1_hardPersist",latest);
+  }catch(e){}
   const payload={
     app:"The Front Shelf — Job Search Planner",
     backupVersion:BACKUP_VERSION,
@@ -2893,22 +2898,83 @@ function mergeImportedPlanner(candidate){
   // Keep future-safe defaults from current model while replacing actual user content.
   const merged={...data,...candidate};
   merged.settings={...data.settings,...(candidate.settings||{})};
-  ["jobs","interviews","network","offers","tasks","documents"].forEach(k=>merged[k]=Array.isArray(candidate[k])?candidate[k]:[]);
+  ["jobs","interviews","network","offers","tasks","documents","cueCards"].forEach(k=>merged[k]=Array.isArray(candidate[k])?candidate[k]:[]);
   return merged;
 }
 async function importSafeBackup(file){
   if(!file)return;
   let raw;
-  try{raw=JSON.parse(await file.text())}catch(e){toast("Import stopped: that file is not valid JSON.");return}
+  try{
+    raw=JSON.parse(await file.text());
+  }catch(e){
+    toast("Import stopped: that file is not valid JSON.");
+    return;
+  }
+
   let candidate;
-  try{candidate=validateImportedPlanner(raw)}catch(e){toast(e.message);return}
-  const counts=`${candidate.jobs.length} jobs, ${candidate.interviews.length} interviews, ${candidate.network.length} contacts, ${candidate.offers.length} offers and ${candidate.tasks.length} tasks`;
+  try{
+    candidate=validateImportedPlanner(raw);
+  }catch(e){
+    toast(e.message);
+    return;
+  }
+
+  const counts=`${candidate.jobs.length} jobs, ${candidate.interviews.length} interviews, ${candidate.network.length} contacts, ${candidate.offers.length} offers, ${candidate.tasks.length} tasks${Array.isArray(candidate.cueCards)?`, ${candidate.cueCards.length} cue cards`:""}`;
   if(!confirm(`Valid Front Shelf backup found (${counts}).\n\nImporting it will replace the planner data currently in this browser. Continue?`))return;
-  // Emergency rollback snapshot before destructive import.
-  localStorage.setItem("frontShelfJobSearchSystemV1_preImportRollback",JSON.stringify(data));
-  const merged=mergeImportedPlanner(candidate);
-  Object.keys(data).forEach(k=>delete data[k]);Object.assign(data,merged);
-  save();renderAll();updateDemoUI();updateBackupStatus();showView("home");toast("Backup imported successfully.");
+
+  const PRIMARY_KEY="frontShelfJobSearchSystemV1";
+  const HARD_KEY="frontShelfJobSearchSystemV1_hardPersist";
+  const ROLLBACK_KEY="frontShelfJobSearchSystemV1_preImportRollback";
+
+  try{
+    // Save the CURRENT planner before touching anything.
+    localStorage.setItem(ROLLBACK_KEY,JSON.stringify(data));
+
+    const merged=mergeImportedPlanner(candidate);
+
+    // Normalize newer sections so an older backup can still be imported safely.
+    merged.cueCards=Array.isArray(candidate.cueCards)?candidate.cueCards:(Array.isArray(merged.cueCards)?merged.cueCards:[]);
+    merged.documents=Array.isArray(candidate.documents)?candidate.documents:[];
+    merged.tasks=Array.isArray(candidate.tasks)?candidate.tasks:[];
+
+    // IMPORTANT: write the imported state to BOTH persistence stores first.
+    // The hard-persistence safety layer previously restored the pre-import data after refresh.
+    const serialized=JSON.stringify(merged);
+    localStorage.setItem(PRIMARY_KEY,serialized);
+    localStorage.setItem(HARD_KEY,serialized);
+
+    // Now update the live in-memory planner.
+    Object.keys(data).forEach(k=>delete data[k]);
+    Object.assign(data,merged);
+
+    // Re-save with the normal application path and explicitly sync both stores again.
+    save();
+    localStorage.setItem(PRIMARY_KEY,JSON.stringify(data));
+    localStorage.setItem(HARD_KEY,JSON.stringify(data));
+
+    // Remove demo state if the imported planner is a real backup.
+    localStorage.removeItem(DEMO_FLAG_KEY);
+
+    renderAll();
+    updateDemoUI();
+    updateBackupStatus();
+    showView("home");
+
+    // A delayed final sync defeats any old click/input snapshot that was queued before
+    // the file picker opened.
+    setTimeout(()=>{
+      try{
+        const finalState=JSON.stringify(data);
+        localStorage.setItem(PRIMARY_KEY,finalState);
+        localStorage.setItem(HARD_KEY,finalState);
+      }catch(e){}
+    },350);
+
+    toast("Backup imported and restored successfully.");
+  }catch(e){
+    console.error("Front Shelf import error",e);
+    toast("Import failed before replacing your planner. Your current data was kept.");
+  }
 }
 function updateBackupStatus(){
   const el=$("#backupStatus");if(!el)return;
