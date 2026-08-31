@@ -339,6 +339,13 @@ export default {
         const rawBody=await req.text();
         const v=await verifyEtsyWebhook(req,env,rawBody);
         if(!v.ok)return json({ok:false,error:v.error},401);
+
+        // Etsy's webhook testing portal sends a signed test event with a fake receipt URL.
+        // Accept it after signature verification, but do not try to fulfill the fake order.
+        if(req.headers.get("webhook-test")==="true"){
+          return json({ok:true,test:true,event:"order.paid"});
+        }
+
         const replayKey=`frontshelf:etsy:webhook:${v.id}`;
         if(await redisPost(env,["GET",replayKey]))return json({ok:true,duplicate:true});
         const p=JSON.parse(rawBody);
