@@ -299,6 +299,52 @@ export default {
       if(req.method==="OPTIONS")return new Response(null,{status:204,headers:BASE_SECURITY_HEADERS});
       if(url.pathname==="/health") return json({ok:true,service:"the-front-shelf-access",etsyConfigured:!!(env.ETSY_KEYSTRING&&env.ETSY_SHARED_SECRET&&env.ETSY_WEBHOOK_SECRET),resendConfigured:!!(env.RESEND_API_KEY&&env.RESEND_FROM_EMAIL)});
       if(url.pathname==="/") return html(loginPage());
+      if(url.pathname==="/admin/test-email" && req.method==="GET"){
+        return html(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>The Front Shelf — Test Activation Email</title>
+        <style>
+        *{box-sizing:border-box}body{margin:0;background:#211b18;color:#342a25;font-family:Arial,sans-serif;min-height:100vh;display:grid;place-items:center;padding:20px}
+        .c{width:min(560px,100%);background:#f7f0e6;border-radius:18px;padding:25px}
+        h1{font-family:Georgia,serif;font-weight:500;margin-top:0}
+        p{font-size:13px;line-height:1.5;color:#67584f}
+        label{display:block;font-size:11px;font-weight:800;margin-top:14px}
+        input{width:100%;padding:12px;margin-top:6px;border:1px solid #c9b199;border-radius:9px;font-size:16px}
+        button{width:100%;padding:12px;margin-top:16px;background:#49382f;color:#fff;border:0;border-radius:9px;font-weight:900}
+        .out{white-space:pre-wrap;word-break:break-word;background:#fff;border:1px solid #d8c6b4;border-radius:9px;padding:12px;margin-top:16px;font-size:12px;min-height:48px}
+        a{color:#765743}
+        </style></head><body><main class="c">
+        <h1>Send a test activation email</h1>
+        <p>This private test sends a real signed activation code through the same Resend function used by Etsy fulfillment.</p>
+        <label>Admin secret<input id="secret" type="password" autocomplete="off"></label>
+        <label>Your email<input id="email" type="email" autocomplete="email"></label>
+        <button id="send">SEND TEST ACTIVATION EMAIL</button>
+        <div class="out" id="out">Ready.</div>
+        <p><a href="/admin">Back to admin</a></p>
+        </main>
+        <script>
+        document.querySelector("#send").onclick=async()=>{
+          const out=document.querySelector("#out");
+          out.textContent="Sending…";
+          try{
+            const r=await fetch("/api/admin/test-email",{
+              method:"POST",
+              headers:{"content-type":"application/json"},
+              body:JSON.stringify({
+                adminSecret:document.querySelector("#secret").value,
+                email:document.querySelector("#email").value.trim()
+              })
+            });
+            const j=await r.json().catch(()=>({}));
+            out.textContent=r.ok&&j.ok
+              ? "Success! Check your inbox.\\nOrder: "+j.orderId
+              : (j.error||"The test failed.");
+          }catch(e){
+            out.textContent="The test request failed.";
+          }
+        };
+        </script></body></html>`);
+      }
+
       if(url.pathname==="/admin") return html(adminPage());
 
       if(url.pathname==="/planner"){
