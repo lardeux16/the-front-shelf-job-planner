@@ -2761,5 +2761,85 @@ document.addEventListener("click", function(e){
 })();
 </script>
 
+
+<script>
+/* HARD PERSISTENCE LAYER */
+(function(){
+  const HARD_KEY="frontShelfJobSearchSystemV1_hardPersist";
+
+  function snapshot(){
+    try{
+      if(typeof data==="undefined" || !data || typeof data!=="object") return;
+      localStorage.setItem(HARD_KEY, JSON.stringify(data));
+    }catch(e){}
+  }
+
+  function restore(){
+    try{
+      const raw=localStorage.getItem(HARD_KEY);
+      if(!raw || typeof data==="undefined") return false;
+      const saved=JSON.parse(raw);
+      if(!saved || typeof saved!=="object") return false;
+
+      Object.keys(saved).forEach(k=>{
+        if(k==="settings" && saved.settings && typeof saved.settings==="object"){
+          data.settings={...(data.settings||{}),...saved.settings};
+        }else{
+          data[k]=saved[k];
+        }
+      });
+      return true;
+    }catch(e){return false}
+  }
+
+  function bindPersistence(){
+    // Rehydrate once app data exists.
+    restore();
+
+    // Mirror every meaningful change, including Setup fields/sliders.
+    document.addEventListener("change",()=>setTimeout(snapshot,0),true);
+    document.addEventListener("input",()=>setTimeout(snapshot,80),true);
+    document.addEventListener("click",e=>{
+      if(e.target.closest("button,.btn,[data-day],[data-weight],[data-wiz-weight]")){
+        setTimeout(snapshot,120);
+      }
+    },true);
+
+    // Persist before refresh/navigation/backgrounding.
+    window.addEventListener("beforeunload",snapshot);
+    window.addEventListener("pagehide",snapshot);
+    document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")snapshot()});
+
+    // Keep the app's normal save() mirrored too.
+    try{
+      if(typeof save==="function" && !save.__hardWrapped){
+        const original=save;
+        const wrapped=function(){
+          const r=original.apply(this,arguments);
+          snapshot();
+          return r;
+        };
+        wrapped.__hardWrapped=true;
+        window.save=wrapped;
+      }
+    }catch(e){}
+
+    // After restoration, force a UI refresh so Setup/Home display the restored values.
+    setTimeout(()=>{
+      try{
+        if(typeof renderAll==="function")renderAll();
+        if(typeof renderPriorityRecovery==="function")renderPriorityRecovery();
+      }catch(e){}
+    },100);
+  }
+
+  if(document.readyState==="loading"){
+    document.addEventListener("DOMContentLoaded",()=>setTimeout(bindPersistence,0));
+  }else{
+    setTimeout(bindPersistence,0);
+  }
+})();
+</script>
+
 </body>
 </html>
