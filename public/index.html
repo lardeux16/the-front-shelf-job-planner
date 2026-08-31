@@ -993,6 +993,16 @@ input,select,textarea{font-size:16px} /* prevents iOS auto-zoom */
   }
 }
 
+
+/* DOCUMENT HUB */
+#documents .doc-card{min-height:190px;display:flex;flex-direction:column}
+#documents .doc-card .btn{align-self:flex-start;text-decoration:none}
+#documents .doc-card .meta{line-height:1.45}
+@media(max-width:700px){
+  #documents .docs-grid{grid-template-columns:1fr!important}
+  #docModal .wizard{max-height:calc(100dvh - 8px)!important}
+}
+
 </style>
 </head>
 <body>
@@ -1008,7 +1018,7 @@ input,select,textarea{font-size:16px} /* prevents iOS auto-zoom */
       <button data-view="analytics"><span>⌁</span><span class="txt"><b>ANALYTICS</b><small>Search intelligence</small></span></button>
       <button data-view="ai"><span>✦</span><span class="txt"><b>AI TOOLKIT</b><small>Prompt builder</small></span></button>
       <button data-view="weekly"><span>□</span><span class="txt"><b>WEEKLY PLAN</b><small>Your agenda</small></span></button>
-      <button data-view="documents"><span>▤</span><span class="txt"><b>DOCUMENTS</b><small>Version tracker</small></span></button>
+      <button data-view="documents"><span>▤</span><span class="txt"><b>DOCUMENTS</b><small>Document hub</small></span></button>
       <button data-view="setup"><span>⚙</span><span class="txt"><b>SETUP</b><small>Personalization</small></span></button>
     
           <div class="mobile-more" id="mobileMore">
@@ -1305,12 +1315,16 @@ input,select,textarea{font-size:16px} /* prevents iOS auto-zoom */
 
       <section class="view" id="documents">
         <div class="card">
-          <div class="card-head"><div><div class="eyebrow">DOCUMENTS</div><h2>Resume & Letter Tracker</h2><div class="sub">Track versions now. Performance intelligence comes as your data grows.</div></div><button class="btn primary" id="addDoc">+ ADD DOCUMENT</button></div>
+          <div class="card-head"><div><div class="eyebrow">DOCUMENT HUB</div><h2>Your application files, organized.</h2><div class="sub">Keep the real link to each resume, cover letter, portfolio or work sample — and remember exactly which version you used for each application.</div></div><button class="btn primary" id="addDoc">+ ADD DOCUMENT</button></div>
           <div class="kpis" style="margin-bottom:16px">
-            <div class="kpi"><strong id="docCount">0</strong><small>DOCUMENTS TRACKED</small></div>
+            <div class="kpi"><strong id="docCount">0</strong><small>DOCUMENTS</small></div>
             <div class="kpi"><strong id="resumeCount">0</strong><small>RESUMES</small></div>
             <div class="kpi"><strong id="letterCount">0</strong><small>COVER LETTERS</small></div>
-            <div class="kpi"><strong id="activeResume">—</strong><small>ACTIVE VERSION</small></div>
+            <div class="kpi"><strong id="linkedDocCount">0</strong><small>LINKED TO JOBS</small></div>
+          </div>
+          <div class="placeholder" style="margin-bottom:16px;text-align:left">
+            <b>Use links for files you want to reopen later.</b>
+            <p>Paste a share link from Google Drive, OneDrive, Dropbox, iCloud, Notion or another cloud service. You can also choose a local file to capture its name, but browsers cannot reliably reopen that local file after a refresh.</p>
           </div>
           <div class="docs-grid" id="docGrid"></div>
         </div>
@@ -1563,6 +1577,36 @@ input,select,textarea{font-size:16px} /* prevents iOS auto-zoom */
   </div>
 </div>
 
+
+<div class="modal" id="docModal">
+  <div class="wizard" style="width:min(760px,96vw)">
+    <div class="wiz-top">
+      <div class="eyebrow" style="color:#d7c3a6">DOCUMENT HUB</div>
+      <h2 id="docModalTitle">Add a document</h2>
+    </div>
+    <div class="wiz-body">
+      <div class="form-grid">
+        <label>Document name<input id="dName" placeholder="Resume — Content Research"></label>
+        <label>Type<select id="dType"><option>Resume</option><option>Cover Letter</option><option>Portfolio</option><option>Work Sample</option><option>Reference</option><option>Other</option></select></label>
+        <label>Version<input id="dVersion" placeholder="V1, V2, August 2026..."></label>
+        <label>Status<select id="dStatus"><option>Active</option><option>Draft</option><option>Archived</option></select></label>
+        <label style="grid-column:1/-1">Cloud / document link<input id="dLink" type="url" placeholder="https://drive.google.com/..."></label>
+        <label style="grid-column:1/-1">Choose local file <input id="dFile" type="file" accept=".pdf,.doc,.docx,.txt,.rtf,.odt,.pages"></label>
+        <div id="dFileInfo" class="sub" style="grid-column:1/-1"></div>
+        <label style="grid-column:1/-1">Linked job<select id="dJob"><option value="">Not linked to a job</option></select></label>
+        <label style="grid-column:1/-1">Notes<textarea id="dNotes" rows="4" placeholder="What changed in this version? When should you use it?"></textarea></label>
+      </div>
+    </div>
+    <div class="wiz-actions">
+      <button class="btn ghost" id="cancelDoc">CANCEL</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn danger" id="deleteDoc" style="display:none">DELETE</button>
+        <button class="btn primary" id="saveDoc">SAVE DOCUMENT</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="modal" id="jobModal">
   <div class="wizard" style="width:min(760px,96vw)">
     <div class="wiz-top">
@@ -1584,6 +1628,8 @@ input,select,textarea{font-size:16px} /* prevents iOS auto-zoom */
         <label>Salary / range<input id="jSalary" placeholder="$70,000–$85,000"></label>
         <label>Work style<select id="jWorkStyle"><option>Remote</option><option>Hybrid</option><option>On-site</option><option>Flexible</option></select></label>
         <label style="grid-column:1/-1">Job link<input id="jLink" placeholder="https://..."></label>
+        <label>Resume used<select id="jResumeDoc"><option value="">Not selected</option></select></label>
+        <label>Cover letter used<select id="jLetterDoc"><option value="">Not selected</option></select></label>
         <label style="grid-column:1/-1">Notes<textarea id="jNotes" rows="4" placeholder="Requirements, recruiter name, why you're interested..."></textarea></label>
       </div>
     </div>
@@ -1778,11 +1824,110 @@ function collectSetup(){
 $("#dayPicker").onclick=e=>{if(!e.target.matches("[data-day]"))return;const i=+e.target.dataset.day;data.settings.searchDays[i]=data.settings.searchDays[i]?0:1;renderSetup();};
 $("#weights").oninput=e=>{if(e.target.matches("[data-weight]")){e.target.nextElementSibling.textContent=e.target.value+"%";updateWeightTotal();}};
 $("#saveSetup").onclick=()=>{collectSetup();if(updateWeightTotal()!==100){toast("Priorities must total 100%.");return};save();renderAll();toast("Setup saved.");};
-function renderDocuments(){
- const docs=data.documents||[];$("#docCount").textContent=docs.length;$("#resumeCount").textContent=docs.filter(d=>d.type==="Resume").length;$("#letterCount").textContent=docs.filter(d=>d.type==="Cover Letter").length;$("#activeResume").textContent=docs.find(d=>d.type==="Resume"&&d.status==="Active")?.version||"—";
- $("#docGrid").innerHTML=docs.length?docs.map(d=>`<div class="doc-card"><span class="pill">${d.type}</span><strong style="margin-top:9px">${d.name}</strong><div class="meta">${d.version||""} · ${d.status||"Active"}</div><div class="meta">${d.target||"General"}${d.link?` · <a href="${d.link}" target="_blank">Open link</a>`:""}</div></div>`).join(""):`<div class="placeholder" style="grid-column:1/-1;padding:30px"><b>No documents yet.</b><p>Add a resume or cover-letter version to start tracking which materials you use.</p></div>`;
+let editingDocId=null;
+let selectedLocalDoc=null;
+
+function safeDocUrl(url){
+  const u=(url||"").trim();
+  return /^https?:\/\//i.test(u)?u:"";
 }
-$("#addDoc").onclick=()=>{const name=prompt("Document name (example: Resume — Content Research V3)");if(!name)return;const type=prompt("Type: Resume, Cover Letter, or Other","Resume")||"Other";const version=prompt("Version","V1")||"";const target=prompt("Target role / company","General")||"";data.documents.push({id:Date.now(),name,type,version,target,status:"Active",link:""});save();renderDocuments();toast("Document added.");};
+function docJobLabel(id){
+  const j=data.jobs.find(x=>String(x.id)===String(id));
+  return j?`${j.company} — ${j.role}`:"";
+}
+function populateDocumentJobSelect(selected=""){
+  const el=$("#dJob"); if(!el)return;
+  el.innerHTML=`<option value="">Not linked to a job</option>`+data.jobs.map(j=>`<option value="${j.id}" ${String(j.id)===String(selected)?"selected":""}>${esc(j.company)} — ${esc(j.role)}</option>`).join("");
+}
+function populateJobDocumentSelects(job=null){
+  const resume=$("#jResumeDoc"), letter=$("#jLetterDoc"); if(!resume||!letter)return;
+  const opts=(type,selected)=>`<option value="">Not selected</option>`+data.documents.filter(d=>d.type===type).map(d=>`<option value="${d.id}" ${String(d.id)===String(selected||"")?"selected":""}>${esc(d.name)}${d.version?` · ${esc(d.version)}`:""}</option>`).join("");
+  resume.innerHTML=opts("Resume",job?.resumeDocId);
+  letter.innerHTML=opts("Cover Letter",job?.letterDocId);
+}
+function renderDocuments(){
+  const docs=data.documents||[];
+  $("#docCount").textContent=docs.length;
+  $("#resumeCount").textContent=docs.filter(d=>d.type==="Resume").length;
+  $("#letterCount").textContent=docs.filter(d=>d.type==="Cover Letter").length;
+  $("#linkedDocCount").textContent=docs.filter(d=>d.jobId).length;
+  $("#docGrid").innerHTML=docs.length?docs.map(d=>{
+    const url=safeDocUrl(d.link), job=docJobLabel(d.jobId);
+    return `<div class="doc-card">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><span class="pill">${esc(d.type||"Other")}</span><button class="job-mini edit-doc" data-id="${d.id}">EDIT</button></div>
+      <strong style="margin-top:9px">${esc(d.name||"Untitled document")}</strong>
+      <div class="meta">${esc(d.version||"No version")} · ${esc(d.status||"Active")}</div>
+      ${job?`<div class="meta">Linked: ${esc(job)}</div>`:""}
+      ${d.fileName?`<div class="meta">Local file: ${esc(d.fileName)}</div>`:""}
+      ${d.notes?`<div class="meta">${esc(d.notes)}</div>`:""}
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+        ${url?`<a class="btn primary" href="${esc(url)}" target="_blank" rel="noopener">OPEN DOCUMENT</a>`:"<span class='pill'>NO REOPENABLE LINK</span>"}
+      </div>
+    </div>`;
+  }).join(""):`<div class="placeholder" style="grid-column:1/-1;padding:30px"><b>Your Document Hub is empty.</b><p>Add the resume, cover letter or portfolio versions you actually use. A cloud link makes each file reopenable from any device.</p><button class="btn primary" id="addFirstDoc">ADD YOUR FIRST DOCUMENT</button></div>`;
+  const first=$("#addFirstDoc"); if(first)first.onclick=()=>openDocModal();
+}
+function openDocModal(id=null){
+  editingDocId=id; selectedLocalDoc=null;
+  const d=id?data.documents.find(x=>String(x.id)===String(id)):null;
+  $("#docModalTitle").textContent=d?"Edit document":"Add a document";
+  $("#dName").value=d?.name||"";
+  $("#dType").value=d?.type||"Resume";
+  $("#dVersion").value=d?.version||"";
+  $("#dStatus").value=d?.status||"Active";
+  $("#dLink").value=d?.link||"";
+  $("#dFile").value="";
+  $("#dFileInfo").textContent=d?.fileName?`Saved file name: ${d.fileName}. Select it again only if you want to replace this reference.`:"";
+  populateDocumentJobSelect(d?.jobId||"");
+  $("#dNotes").value=d?.notes||"";
+  $("#deleteDoc").style.display=d?"inline-flex":"none";
+  $("#docModal").classList.add("show");
+}
+function closeDocModal(){
+  $("#docModal").classList.remove("show"); editingDocId=null; selectedLocalDoc=null;
+}
+function saveDocRecord(){
+  const name=$("#dName").value.trim(); if(!name){toast("Document name is required.");return}
+  const link=$("#dLink").value.trim();
+  if(link && !safeDocUrl(link)){toast("Document link must start with http:// or https://");return}
+  const old=editingDocId?data.documents.find(x=>String(x.id)===String(editingDocId)):null;
+  const record={
+    id:editingDocId||Date.now(),
+    name,
+    type:$("#dType").value,
+    version:$("#dVersion").value.trim(),
+    status:$("#dStatus").value,
+    link,
+    jobId:$("#dJob").value,
+    notes:$("#dNotes").value.trim(),
+    fileName:selectedLocalDoc?.name||old?.fileName||"",
+    fileType:selectedLocalDoc?.type||old?.fileType||"",
+    fileSize:selectedLocalDoc?.size||old?.fileSize||0
+  };
+  if(editingDocId){
+    const i=data.documents.findIndex(x=>String(x.id)===String(editingDocId));
+    if(i>=0)data.documents[i]={...data.documents[i],...record};
+  }else data.documents.unshift(record);
+  save();closeDocModal();renderAll();showView("documents");toast("Document saved.");
+}
+$("#addDoc").onclick=()=>openDocModal();
+$("#cancelDoc").onclick=closeDocModal;
+$("#saveDoc").onclick=saveDocRecord;
+$("#deleteDoc").onclick=()=>{
+  if(!editingDocId)return;
+  if(!confirm("Delete this document record? The real file will not be deleted."))return;
+  const id=String(editingDocId);
+  data.documents=data.documents.filter(d=>String(d.id)!==id);
+  data.jobs.forEach(j=>{if(String(j.resumeDocId||"")===id)j.resumeDocId="";if(String(j.letterDocId||"")===id)j.letterDocId=""});
+  save();closeDocModal();renderAll();showView("documents");toast("Document record deleted.");
+};
+$("#dFile").onchange=e=>{
+  selectedLocalDoc=e.target.files?.[0]||null;
+  $("#dFileInfo").textContent=selectedLocalDoc?`Selected: ${selectedLocalDoc.name} · ${Math.max(1,Math.round(selectedLocalDoc.size/1024))} KB. The planner can remember this file name, but use a cloud link if you need to reopen it after refresh.`:"";
+};
+$("#docGrid").onclick=e=>{
+  const b=e.target.closest(".edit-doc"); if(b)openDocModal(b.dataset.id);
+};
 
 let editingJobId=null;
 
@@ -1843,6 +1988,7 @@ function openJobModal(id=null){
   $("#jSalary").value=j?.salary||"";
   $("#jWorkStyle").value=j?.workStyle||data.settings.arrangement||"Remote";
   $("#jLink").value=j?.link||"";
+  populateJobDocumentSelects(j);
   $("#jNotes").value=j?.notes||"";
   $("#deleteJob").style.display=j?"inline-flex":"none";
   $("#jobModal").classList.add("show");
@@ -1861,6 +2007,8 @@ function saveJobRecord(){
     salary:$("#jSalary").value.trim(),
     workStyle:$("#jWorkStyle").value,
     link:$("#jLink").value.trim(),
+    resumeDocId:$("#jResumeDoc").value,
+    letterDocId:$("#jLetterDoc").value,
     notes:$("#jNotes").value.trim()
   };
   if(editingJobId){
@@ -2464,7 +2612,7 @@ document.addEventListener("click",e=>{
 });
 
 function renderAll(){renderHome();renderSetup();renderDocuments();renderJobs();renderInterviews();renderNetwork();renderOffers();renderAnalytics();populateAIJobs();renderWeekly();renderCueCards();}
-const titles={home:["Welcome back","Your job search, prioritized."],jobs:["Jobs","Application Command Center"],interviews:["Interviews","Prep Studio"],cuecards:["Cue Cards","Interview study deck"],network:["Network","Relationship Tracker"],offers:["Offers","Decision Center"],analytics:["Analytics","Search Intelligence"],ai:["AI Toolkit","Personalized prompt builder"],weekly:["Weekly Plan","Your job-search agenda"],documents:["Documents","Resume & Letter Tracker"],setup:["Setup","Personalization Hub"]};
+const titles={home:["Welcome back","Your job search, prioritized."],jobs:["Jobs","Application Command Center"],interviews:["Interviews","Prep Studio"],cuecards:["Cue Cards","Interview study deck"],network:["Network","Relationship Tracker"],offers:["Offers","Decision Center"],analytics:["Analytics","Search Intelligence"],ai:["AI Toolkit","Personalized prompt builder"],weekly:["Weekly Plan","Your job-search agenda"],documents:["Documents","Document Hub"],setup:["Setup","Personalization Hub"]};
 function showView(id){$$(".view").forEach(v=>v.classList.toggle("active",v.id===id));$$(".nav button").forEach(b=>b.classList.toggle("active",b.dataset.view===id));$("#pageTitle").textContent=titles[id][0];$("#pageSub").textContent=titles[id][1];window.scrollTo({top:0,behavior:"smooth"});}
 $("#nav").onclick=e=>{const b=e.target.closest("button[data-view]");if(b)showView(b.dataset.view)};$$("[data-jump]").forEach(b=>b.onclick=()=>showView(b.dataset.jump));
 
