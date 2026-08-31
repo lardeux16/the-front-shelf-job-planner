@@ -1746,13 +1746,13 @@ input,select,textarea{font-size:16px} /* prevents iOS auto-zoom */
 const KEY="frontShelfJobSearchSystemV1";
 const DEFAULT={
  settings:{name:"",location:"",targetTitle:"Content Researcher",experience:"Mid-level",minSalary:60000,arrangement:"Remote",goal:5,networkGoal:2,followGoal:3,industries:"",searchDays:[1,1,1,1,1,0,0],priorities:{"Work-Life Balance":25,"Growth & Learning":20,"Compensation":20,"Company Culture":15,"Remote Flexibility":10,"Job Stability":5,"Impact & Purpose":5},setupComplete:false,wizardSeen:false},
- jobs:[],interviews:[],network:[],offers:[],tasks:[],documents:[]
+ jobs:[],interviews:[],network:[],offers:[],tasks:[],documents:[],cueCards:[]
 };
 let raw; try{raw=JSON.parse(localStorage.getItem(KEY)||"null")}catch(e){raw=null}
 let data=raw||structuredClone(DEFAULT);
 data.settings={...structuredClone(DEFAULT.settings),...(data.settings||{})};
 data.settings.priorities={...structuredClone(DEFAULT.settings.priorities),...(data.settings.priorities||{})};
-for(const k of ["jobs","interviews","network","offers","tasks","documents"]) if(!Array.isArray(data[k])) data[k]=[];
+for(const k of ["jobs","interviews","network","offers","tasks","documents","cueCards"]) if(!Array.isArray(data[k])) data[k]=[];
 if(!Array.isArray(data.settings.searchDays)) data.settings.searchDays=[1,1,1,1,1,0,0];
 const $=q=>document.querySelector(q), $$=q=>[...document.querySelectorAll(q)];
 const save=()=>{localStorage.setItem(KEY,JSON.stringify(data));};
@@ -2709,9 +2709,25 @@ $("#interviewTabs").onclick=e=>{
 };
 $("#iChecklist").onchange=e=>{if(e.target.matches("[data-prep]"))updateInterviewPrepPreview();};
 
-$("#exportData").onclick=()=>{const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="the-front-shelf-backup.json";a.click();URL.revokeObjectURL(a.href)};
-$("#importData").onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{data=JSON.parse(r.result);save();location.reload()}catch(err){toast("That backup file couldn't be read.")}};r.readAsText(f)};
-$("#resetData").onclick=()=>{if(confirm("Reset all planner data on this device? This cannot be undone unless you exported a backup.")){localStorage.removeItem(KEY);location.reload()}};
+/* UNIFIED BACKUP CONTROLS
+   The old Setup import previously used a separate importer, which was being overwritten
+   by the hard-persistence layer after reload. All controls now use one import engine. */
+$("#exportData").onclick=()=>exportSafeBackup();
+$("#importData").onchange=async e=>{
+  const f=e.target.files?.[0];
+  if(f) await importSafeBackup(f);
+  e.target.value="";
+};
+$("#resetData").onclick=()=>{
+  if(confirm("RESET THE ENTIRE PLANNER?\n\nThis removes planner data stored in this browser. Export a backup first if you may want it later.\n\nThis cannot be undone.")){
+    localStorage.removeItem(KEY);
+    localStorage.removeItem("frontShelfJobSearchSystemV1_hardPersist");
+    localStorage.removeItem("frontShelfJobSearchSystemV1_preImportRollback");
+    localStorage.removeItem("frontShelfJobSearchSystemV1_preDemoBackup");
+    localStorage.removeItem("frontShelfJobSearchSystemV1_demoActive");
+    location.reload();
+  }
+};
 let wizStep=0;
 const wizSteps=[
 ()=>`<div class="eyebrow">STEP 1 OF 7</div><h2 style="margin-top:5px">Tell us about you</h2><p class="sub">Personalize the planner so it feels like yours.</p><div class="form-grid" style="margin-top:16px"><label>Your name<input id="wName" value="${data.settings.name||""}" placeholder="Sarah"></label><label>Location<input id="wLocation" value="${data.settings.location||""}" placeholder="Montreal, QC"></label></div>`,
@@ -2971,6 +2987,9 @@ async function importSafeBackup(file){
     },350);
 
     toast("Backup imported and restored successfully.");
+    // Reload ONLY after both storage layers contain the imported state.
+    // On the next load the planner reads the imported data as its source of truth.
+    setTimeout(()=>location.reload(),450);
   }catch(e){
     console.error("Front Shelf import error",e);
     toast("Import failed before replacing your planner. Your current data was kept.");
@@ -2984,8 +3003,17 @@ function updateBackupStatus(){
   el.textContent=`Your planner is saved locally. Last backup exported: ${d.toLocaleDateString()} ${d.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}.`;
 }
 $("#safeExport").onclick=exportSafeBackup;
-$("#safeImport").onclick=()=>$("#safeImportFile").click();
-$("#safeImportFile").onchange=e=>{importSafeBackup(e.target.files?.[0]);e.target.value=""};
+$("#safeImport").onclick=()=>{
+  const input=document.getElementById("safeImportFile");
+  if(input) input.click();
+};
+document.addEventListener("change",async e=>{
+  if(e.target && e.target.id==="safeImportFile"){
+    const f=e.target.files?.[0];
+    if(f) await importSafeBackup(f);
+    e.target.value="";
+  }
+});
 updateBackupStatus();
 
 renderAll();
