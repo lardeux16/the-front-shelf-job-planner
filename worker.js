@@ -35,11 +35,56 @@ async function sha256(v){
   return Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",enc.encode(v))))
     .map(x=>x.toString(16).padStart(2,"0")).join("");
 }
+function validEmail(v){
+  const s=normEmail(v);
+  return s.length<=254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
+}
+function cleanOrderId(v){
+  const s=String(v||"").trim();
+  return /^[A-Za-z0-9._-]{1,80}$/.test(s)?s:"";
+}
+function cleanDeviceId(v){
+  const s=String(v||"").trim();
+  return /^[A-Za-z0-9-]{16,80}$/.test(s)?s:"";
+}
+async function rateLimit(env,req,bucket,limit,windowSec){
+  const ip=req.headers.get("cf-connecting-ip")||"unknown";
+  const key=`frontshelf:rl:${bucket}:${await sha256(ip)}`;
+  const count=Number(await redisPost(env,["INCR",key]))||0;
+  if(count===1)await redisPost(env,["EXPIRE",key,String(windowSec)]);
+  return {allowed:count<=limit,remaining:Math.max(0,limit-count)};
+}
+async function verifyLicenseCode(env,email,code){
+  if(!validEmail(email) || typeof code!=="string" || code.length<20 || code.length>2048)return null;
+  const lic=await verifyPayload(env.LICENSE_SIGNING_SECRET,code,"license");
+  if(!lic || normEmail(lic.email)!==normEmail(email))return null;
+  return lic;
+}
+
+const BASE_SECURITY_HEADERS={
+  "x-content-type-options":"nosniff",
+  "x-frame-options":"DENY",
+  "referrer-policy":"no-referrer",
+  "permissions-policy":"camera=(), microphone=(), geolocation=(), payment=()",
+  "cross-origin-opener-policy":"same-origin",
+  "cross-origin-resource-policy":"same-origin"
+};
 function json(data,status=200,headers={}){
-  return new Response(JSON.stringify(data),{status,headers:{"content-type":"application/json;charset=utf-8","cache-control":"no-store",...headers}})
+  return new Response(JSON.stringify(data),{status,headers:{
+    "content-type":"application/json;charset=utf-8",
+    "cache-control":"no-store",
+    ...BASE_SECURITY_HEADERS,
+    ...headers
+  }})
 }
 function html(body,status=200,headers={}){
-  return new Response(body,{status,headers:{"content-type":"text/html;charset=utf-8","cache-control":"no-store","x-frame-options":"DENY","referrer-policy":"no-referrer",...headers}})
+  return new Response(body,{status,headers:{
+    "content-type":"text/html;charset=utf-8",
+    "cache-control":"no-store",
+    "content-security-policy":"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; font-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+    ...BASE_SECURITY_HEADERS,
+    ...headers
+  }})
 }
 function cookie(req,name){
   const raw=req.headers.get("cookie")||"";
@@ -47,7 +92,7 @@ function cookie(req,name){
   return m?decodeURIComponent(m[1]):"";
 }
 function sessionCookie(token){
-  return `frontshelf_session=${encodeURIComponent(token)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000`;
+  return `frontshelf_session=${encodeURIComponent(token)}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=2592000`;
 }
 async function redis(env,args){
   const url = env.UPSTASH_REDIS_REST_URL;
@@ -158,6 +203,10 @@ export default {
   async fetch(req,env) {
     const url=new URL(req.url);
     try {
+      const len=Number(req.headers.get("content-length")||0);
+      if(len>1000000)return json({ok:false,error:"Request too large."},413);
+      if(req.method==="OPTIONS")return new Response(null,{status:204,headers:BASE_SECURITY_HEADERS});
+      if(url.pathname==="/health") return json({ok:true,service:"the-front-shelf-access"});
       if(url.pathname==="/") return html(loginPage());
       if(url.pathname==="/admin") return html(adminPage());
 
@@ -168,21 +217,25 @@ export default {
       }
 
       if(url.pathname==="/api/admin/issue" && req.method==="POST"){
+        const rl=await rateLimit(env,req,"admin-issue",8,600);
+        if(!rl.allowed)return json({ok:false,error:"Too many attempts. Try again later."},429,{"retry-after":"600"});
         const body=await req.json().catch(()=>({}));
-        if(!env.ADMIN_SECRET || body.adminSecret!==env.ADMIN_SECRET)
+        if(typeof body.adminSecret!=="string" || body.adminSecret.length>256 || !env.ADMIN_SECRET || body.adminSecret!==env.ADMIN_SECRET)
           return json({ok:false,error:"Invalid admin secret."},401);
-        const email=normEmail(body.email),orderId=String(body.orderId||"").trim();
-        if(!email||!orderId)return json({ok:false,error:"Buyer email and Etsy order ID are required."},400);
-        const code=await signPayload(env.LICENSE_SIGNING_SECRET,{email,orderId,v:1},"license");
+        const email=normEmail(body.email),orderId=cleanOrderId(body.orderId);
+        if(!validEmail(email)||!orderId)return json({ok:false,error:"Valid buyer email and Etsy order ID are required."},400);
+        const code=await signPayload(env.LICENSE_SIGNING_SECRET,{email,orderId,v:1,issuedAt:Date.now()},"license");
         return json({ok:true,email,orderId,code});
       }
 
       if(url.pathname==="/api/activate" && req.method==="POST"){
+        const rl=await rateLimit(env,req,"activate",20,600);
+        if(!rl.allowed)return json({ok:false,error:"Too many activation attempts. Try again later."},429,{"retry-after":"600"});
         const body=await req.json().catch(()=>({}));
-        const email=normEmail(body.email),deviceId=String(body.deviceId||"");
-        const lic=await verifyPayload(env.LICENSE_SIGNING_SECRET,body.code,"license");
-        if(!lic||normEmail(lic.email)!==email)return json({ok:false,error:"That email and activation code do not match."},401);
-        if(!deviceId)return json({ok:false,error:"Device ID missing."},400);
+        const email=normEmail(body.email),deviceId=cleanDeviceId(body.deviceId);
+        const lic=await verifyLicenseCode(env,email,body.code);
+        if(!lic)return json({ok:false,error:"That email and activation code do not match."},401);
+        if(!deviceId)return json({ok:false,error:"Invalid device identifier."},400);
         const key=`frontshelf:devices:${await sha256(email)}`;
         const members=await redis(env,["smembers",key])||[];
         if(!members.includes(deviceId) && members.length>=2)
@@ -240,12 +293,15 @@ export default {
           headers:{
             "content-type":"application/json; charset=utf-8",
             "set-cookie":"frontshelf_session=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0",
-            "cache-control":"no-store"
+            "cache-control":"no-store",
+            ...BASE_SECURITY_HEADERS
           }
         });
       }
 
       if(url.pathname==="/api/reset-my-devices" && req.method==="POST"){
+        const rl=await rateLimit(env,req,"reset-my-devices",4,3600);
+        if(!rl.allowed)return json({ok:false,error:"Too many reset requests. Try again later."},429,{"retry-after":"3600"});
         const session=await verifySession(req,env);
         if(!session)return json({ok:false,error:"Not authorized."},401);
         const emailHash=await sha256(session.email);
@@ -255,18 +311,28 @@ export default {
           headers:{
             "content-type":"application/json; charset=utf-8",
             "set-cookie":"frontshelf_session=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0",
-            "cache-control":"no-store"
+            "cache-control":"no-store",
+            ...BASE_SECURITY_HEADERS
           }
         });
       }
 
       if(url.pathname==="/api/reset-devices" && req.method==="POST"){
+        const rl=await rateLimit(env,req,"reset-devices",6,3600);
+        if(!rl.allowed)return json({ok:false,error:"Too many reset attempts. Try again later."},429,{"retry-after":"3600"});
         const body=await req.json().catch(()=>({}));
-        const email=normEmail(body.email),deviceId=String(body.deviceId||"");
-        const lic=await verifyPayload(env.LICENSE_SIGNING_SECRET,body.code,"license");
-        if(!lic||normEmail(lic.email)!==email)return json({ok:false,error:"That email and activation code do not match."},401);
+        const email=normEmail(body.email),deviceId=cleanDeviceId(body.deviceId);
+        const lic=await verifyLicenseCode(env,email,body.code);
+        if(!lic)return json({ok:false,error:"That email and activation code do not match."},401);
+        if(!deviceId)return json({ok:false,error:"Invalid device identifier."},400);
+
+        // Credential-only resets are allowed only when there are currently no active devices.
+        // If devices already exist, the buyer must reset from an authenticated device in Account & Devices.
         const key=`frontshelf:devices:${await sha256(email)}`;
-        await redis(env,["del",key]);
+        const members=await redis(env,["smembers",key])||[];
+        if(members.length>0)
+          return json({ok:false,error:"For security, reset active devices from Account & Devices on a currently authorized device."},403);
+
         await redis(env,["sadd",key,deviceId]);
         await redis(env,["expire",key,String(60*60*24*365*3)]);
         const token=await signPayload(env.LICENSE_SIGNING_SECRET,{email,deviceId,orderId:lic.orderId,exp:Date.now()+30*24*60*60*1000},"session");
