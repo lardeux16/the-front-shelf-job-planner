@@ -140,6 +140,97 @@ async function syncDataKey(session){
   return `frontshelf:data:${await sha256(`${session.email}|${session.orderId||""}`)}`;
 }
 
+function stdBase64(bytes){return btoa(String.fromCharCode(...new Uint8Array(bytes)))}
+function decodeStdBase64(s){return Uint8Array.from(atob(String(s||"")),c=>c.charCodeAt(0))}
+async function hmacWithBytes(keyBytes,message){
+  const key=await crypto.subtle.importKey("raw",keyBytes,{name:"HMAC",hash:"SHA-256"},false,["sign"]);
+  return new Uint8Array(await crypto.subtle.sign("HMAC",key,enc.encode(message)));
+}
+function timingSafeStringEqual(a,b){
+  a=String(a||"");b=String(b||"");
+  if(a.length!==b.length)return false;
+  let x=0;for(let i=0;i<a.length;i++)x|=a.charCodeAt(i)^b.charCodeAt(i);
+  return x===0;
+}
+async function verifyEtsyWebhook(req,env,rawBody){
+  const id=req.headers.get("webhook-id")||"",ts=req.headers.get("webhook-timestamp")||"",sigHeader=req.headers.get("webhook-signature")||"";
+  if(!id||!ts||!sigHeader||!env.ETSY_WEBHOOK_SECRET)return {ok:false,error:"Missing Etsy webhook signature data."};
+  const timestamp=Number(ts),now=Math.floor(Date.now()/1000);
+  if(!Number.isFinite(timestamp)||Math.abs(now-timestamp)>300)return {ok:false,error:"Stale Etsy webhook timestamp."};
+  let secret=String(env.ETSY_WEBHOOK_SECRET); if(secret.startsWith("whsec_"))secret=secret.slice(6);
+  let keyBytes; try{keyBytes=decodeStdBase64(secret)}catch{return {ok:false,error:"Invalid Etsy webhook secret."}}
+  const expected=stdBase64(await hmacWithBytes(keyBytes,`${id}.${ts}.${rawBody}`));
+  const candidates=sigHeader.split(/\s+/).flatMap(x=>x.split(",")).map(x=>x.trim()).filter(Boolean);
+  const match=candidates.some(x=>timingSafeStringEqual(x,expected)||timingSafeStringEqual(x.replace(/^v\d+=?/i,""),expected));
+  return match?{ok:true,id,timestamp}:{ok:false,error:"Invalid Etsy webhook signature."};
+}
+function etsyApiKey(env){
+  if(!env.ETSY_KEYSTRING||!env.ETSY_SHARED_SECRET)throw new Error("ETSY_APP_NOT_CONFIGURED");
+  return `${env.ETSY_KEYSTRING}:${env.ETSY_SHARED_SECRET}`;
+}
+function etsyRedirectUri(req){return new URL("/api/etsy/oauth/callback",req.url).toString()}
+async function randomB64Url(bytes=32){return b64url(crypto.getRandomValues(new Uint8Array(bytes)))}
+async function pkceChallenge(verifier){
+  return b64url(new Uint8Array(await crypto.subtle.digest("SHA-256",enc.encode(verifier))));
+}
+async function storeEtsyAuth(env,obj){
+  await redisPost(env,["SET","frontshelf:etsy:auth",await encryptSyncPayload(env,obj)]);
+}
+async function loadEtsyAuth(env){
+  const raw=await redisPost(env,["GET","frontshelf:etsy:auth"]);
+  return raw?decryptSyncPayload(env,raw):null;
+}
+async function refreshEtsyAuth(env,auth){
+  if(!auth?.refresh_token)throw new Error("ETSY_NOT_AUTHORIZED");
+  const body=new URLSearchParams({grant_type:"refresh_token",client_id:String(env.ETSY_KEYSTRING||""),refresh_token:String(auth.refresh_token)});
+  const r=await fetch("https://api.etsy.com/v3/public/oauth/token",{method:"POST",headers:{"content-type":"application/x-www-form-urlencoded"},body});
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok||!j.access_token)throw new Error(`Etsy token refresh failed (${r.status}).`);
+  const next={access_token:j.access_token,refresh_token:j.refresh_token||auth.refresh_token,scope:j.scope||auth.scope||"",expires_at:Date.now()+(Number(j.expires_in)||3600)*1000};
+  await storeEtsyAuth(env,next); return next;
+}
+async function getEtsyAccessToken(env){
+  let auth=await loadEtsyAuth(env); if(!auth)throw new Error("ETSY_NOT_AUTHORIZED");
+  if(!auth.access_token||!auth.expires_at||Date.now()>Number(auth.expires_at)-120000)auth=await refreshEtsyAuth(env,auth);
+  return auth.access_token;
+}
+async function fetchEtsyResource(env,url){
+  const u=new URL(url);
+  if(u.protocol!=="https:"||!["api.etsy.com","openapi.etsy.com"].includes(u.hostname))throw new Error("Unexpected Etsy resource URL.");
+  let token=await getEtsyAccessToken(env);
+  let r=await fetch(u.toString(),{headers:{"x-api-key":etsyApiKey(env),Authorization:`Bearer ${token}`}});
+  if(r.status===401){token=(await refreshEtsyAuth(env,await loadEtsyAuth(env))).access_token;r=await fetch(u.toString(),{headers:{"x-api-key":etsyApiKey(env),Authorization:`Bearer ${token}`}})}
+  const j=await r.json().catch(()=>({})); if(!r.ok)throw new Error(`Etsy receipt lookup failed (${r.status}).`); return j;
+}
+function htmlEscape(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+async function sendActivationEmail(env,{to,code,orderId}){
+  if(!env.RESEND_API_KEY)throw new Error("RESEND_NOT_CONFIGURED");
+  if(!env.RESEND_FROM_EMAIL)throw new Error("RESEND_FROM_EMAIL_NOT_CONFIGURED");
+  const plannerUrl="https://the-front-shelf-job-planner.lardeux16.workers.dev";
+  const payload={from:String(env.RESEND_FROM_EMAIL),to:[to],subject:"Your The Front Shelf planner access",
+  html:`<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;padding:28px;color:#342c28">
+  <h1 style="font-family:Georgia,serif;font-weight:500">Your planner is ready.</h1>
+  <p>Thank you for your purchase. Use the email associated with your Etsy order and the activation code below.</p>
+  <div style="background:#eee4d8;padding:16px;border-radius:12px;word-break:break-all"><b>Activation code</b><br><br><span style="font-family:monospace">${htmlEscape(code)}</span></div>
+  <p><a href="${plannerUrl}">Open your planner</a></p>
+  <p style="font-size:12px;color:#746a63">Your license supports up to 2 devices with cross-device sync. Keep this activation code private.</p>
+  <p style="font-size:11px;color:#8a7d73">Order reference: ${htmlEscape(orderId)}</p></div>`};
+  const r=await fetch("https://api.resend.com/emails",{method:"POST",headers:{Authorization:`Bearer ${env.RESEND_API_KEY}`,"content-type":"application/json"},body:JSON.stringify(payload)});
+  const j=await r.json().catch(()=>({})); if(!r.ok||!j.id)throw new Error(`Resend email failed (${r.status}).`); return j;
+}
+function receiptObject(x){
+  if(x?.receipt_id)return x;
+  if(Array.isArray(x?.results)&&x.results[0])return x.results[0];
+  if(x?.receipt?.receipt_id)return x.receipt;
+  return x||{};
+}
+function receiptBuyerEmail(r){return normEmail(r?.buyer_email||r?.email||r?.buyer?.email||"")}
+function receiptHasPlanner(r,listingId){
+  if(!listingId)return true;
+  const wanted=String(listingId),tx=Array.isArray(r?.transactions)?r.transactions:[];
+  return tx.some(t=>String(t?.listing_id||t?.listing?.listing_id||t?.product_data?.listing_id||"")===wanted);
+}
+
 function decodePlanner(){
   const bin=atob(PLANNER_B64);
   const bytes=Uint8Array.from(bin,c=>c.charCodeAt(0));
@@ -192,8 +283,8 @@ h1{font-family:Georgia;font-weight:500}label{display:block;font-size:11px;font-w
 button{width:100%;padding:12px;margin-top:16px;background:#49382f;color:#fff;border:0;border-radius:9px;font-weight:900}.out{white-space:pre-wrap;word-break:break-word;background:#fff;border:1px solid #d8c6b4;border-radius:9px;padding:12px;margin-top:16px;font-size:12px}
 </style></head><body><main class="c"><h1>Issue buyer access</h1><p>Private owner tool. Do not share this page or your admin secret.</p>
 <label>Admin secret<input id="secret" type="password"></label><label>Buyer email<input id="email" type="email"></label><label>Etsy order ID<input id="order"></label>
-<button id="go">GENERATE ACTIVATION CODE</button><div class="out" id="out">No code generated yet.</div></main>
-<script>document.querySelector("#go").onclick=async()=>{const r=await fetch("/api/admin/issue",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({adminSecret:document.querySelector("#secret").value,email:document.querySelector("#email").value,orderId:document.querySelector("#order").value})});const j=await r.json();document.querySelector("#out").textContent=j.ok?("Buyer: "+j.email+"\\nOrder: "+j.orderId+"\\n\\nActivation code:\\n"+j.code):(j.error||"Could not issue code.");}</script>
+<button id="go">GENERATE ACTIVATION CODE</button><button id="etsyConnect" style="background:#8a6b57">CONNECT ETSY SHOP</button><div class="out" id="out">No code generated yet.</div></main>
+<script>document.querySelector("#go").onclick=async()=>{const r=await fetch("/api/admin/issue",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({adminSecret:document.querySelector("#secret").value,email:document.querySelector("#email").value,orderId:document.querySelector("#order").value})});const j=await r.json();document.querySelector("#out").textContent=j.ok?("Buyer: "+j.email+"\\nOrder: "+j.orderId+"\\n\\nActivation code:\\n"+j.code):(j.error||"Could not issue code.");};document.querySelector("#etsyConnect").onclick=async()=>{const r=await fetch("/api/etsy/oauth/start",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({adminSecret:document.querySelector("#secret").value})});const j=await r.json();if(j.ok&&j.url)location.href=j.url;else document.querySelector("#out").textContent=j.error||"Could not start Etsy authorization.";};</script>
 </body></html>`;
 }
 
@@ -206,7 +297,7 @@ export default {
       const len=Number(req.headers.get("content-length")||0);
       if(len>1000000)return json({ok:false,error:"Request too large."},413);
       if(req.method==="OPTIONS")return new Response(null,{status:204,headers:BASE_SECURITY_HEADERS});
-      if(url.pathname==="/health") return json({ok:true,service:"the-front-shelf-access"});
+      if(url.pathname==="/health") return json({ok:true,service:"the-front-shelf-access",etsyConfigured:!!(env.ETSY_KEYSTRING&&env.ETSY_SHARED_SECRET&&env.ETSY_WEBHOOK_SECRET),resendConfigured:!!(env.RESEND_API_KEY&&env.RESEND_FROM_EMAIL)});
       if(url.pathname==="/") return html(loginPage());
       if(url.pathname==="/admin") return html(adminPage());
 
@@ -214,6 +305,59 @@ export default {
         const s=await verifySession(req,env);
         if(!s)return Response.redirect(new URL("/",url),302);
         return html(decodePlanner());
+      }
+
+      if(url.pathname==="/api/etsy/oauth/start" && req.method==="POST"){
+        const rl=await rateLimit(env,req,"etsy-oauth-start",6,600);
+        if(!rl.allowed)return json({ok:false,error:"Too many attempts. Try again later."},429);
+        const body=await req.json().catch(()=>({}));
+        if(!env.ADMIN_SECRET||typeof body.adminSecret!=="string"||body.adminSecret!==env.ADMIN_SECRET)return json({ok:false,error:"Invalid admin secret."},401);
+        if(!env.ETSY_KEYSTRING||!env.ETSY_SHARED_SECRET)return json({ok:false,error:"Etsy app credentials are not configured in Cloudflare."},503);
+        const state=await randomB64Url(24),verifier=await randomB64Url(48),challenge=await pkceChallenge(verifier);
+        await redisPost(env,["SET",`frontshelf:etsy:oauth:${state}`,verifier,"EX","600"]);
+        const u=new URL("https://www.etsy.com/oauth/connect");
+        u.searchParams.set("response_type","code");u.searchParams.set("redirect_uri",etsyRedirectUri(req));u.searchParams.set("scope","transactions_r");
+        u.searchParams.set("client_id",String(env.ETSY_KEYSTRING));u.searchParams.set("state",state);u.searchParams.set("code_challenge",challenge);u.searchParams.set("code_challenge_method","S256");
+        return json({ok:true,url:u.toString()});
+      }
+
+      if(url.pathname==="/api/etsy/oauth/callback" && req.method==="GET"){
+        const state=String(url.searchParams.get("state")||""),code=String(url.searchParams.get("code")||"");
+        if(!state||!code)return html("<h2>Etsy authorization failed.</h2><p>Missing authorization response.</p>",400);
+        const verifier=await redisPost(env,["GET",`frontshelf:etsy:oauth:${state}`]);
+        if(!verifier)return html("<h2>Etsy authorization expired.</h2><p>Return to /admin and connect Etsy again.</p>",400);
+        await redisPost(env,["DEL",`frontshelf:etsy:oauth:${state}`]);
+        const body=new URLSearchParams({grant_type:"authorization_code",client_id:String(env.ETSY_KEYSTRING||""),redirect_uri:etsyRedirectUri(req),code,code_verifier:String(verifier)});
+        const tr=await fetch("https://api.etsy.com/v3/public/oauth/token",{method:"POST",headers:{"content-type":"application/x-www-form-urlencoded"},body});
+        const tok=await tr.json().catch(()=>({}));
+        if(!tr.ok||!tok.access_token)return html(`<h2>Etsy authorization failed.</h2><p>Token exchange returned ${tr.status}.</p>`,500);
+        await storeEtsyAuth(env,{access_token:tok.access_token,refresh_token:tok.refresh_token,scope:tok.scope||"",expires_at:Date.now()+(Number(tok.expires_in)||3600)*1000});
+        return html('<div style="font-family:Arial;max-width:620px;margin:50px auto"><h1>Etsy shop connected.</h1><p>The Front Shelf can now read paid receipts from your own shop.</p><p><a href="/admin">Return to admin</a></p></div>');
+      }
+
+      if(url.pathname==="/api/etsy/order-paid" && req.method==="POST"){
+        const rawBody=await req.text();
+        const v=await verifyEtsyWebhook(req,env,rawBody);
+        if(!v.ok)return json({ok:false,error:v.error},401);
+        const replayKey=`frontshelf:etsy:webhook:${v.id}`;
+        if(await redisPost(env,["GET",replayKey]))return json({ok:true,duplicate:true});
+        const p=JSON.parse(rawBody);
+        if(p?.event_type!=="order.paid")return json({ok:true,ignored:true});
+        if(!p?.resource_url)return json({ok:false,error:"Missing Etsy resource URL."},400);
+        const receipt=receiptObject(await fetchEtsyResource(env,p.resource_url));
+        const receiptId=String(receipt?.receipt_id||p.resource_url.split("/").filter(Boolean).pop()||"");
+        if(!receiptId)return json({ok:false,error:"Could not determine Etsy receipt ID."},500);
+        if(receipt?.status&&!["paid","completed"].includes(String(receipt.status).toLowerCase()))return json({ok:true,ignored:true,reason:"receipt-not-paid"});
+        if(env.ETSY_PLANNER_LISTING_ID&&!receiptHasPlanner(receipt,env.ETSY_PLANNER_LISTING_ID))return json({ok:true,ignored:true,reason:"not-the-planner-listing"});
+        const buyerEmail=receiptBuyerEmail(receipt);
+        if(!validEmail(buyerEmail))return json({ok:false,error:"Buyer email was not available on the Etsy receipt."},500);
+        const fulfilledKey=`frontshelf:etsy:fulfilled:${receiptId}`;
+        if(await redisPost(env,["GET",fulfilledKey])){await redisPost(env,["SET",replayKey,"1","EX","604800"]);return json({ok:true,alreadyFulfilled:true})}
+        const activationCode=await signPayload(env.LICENSE_SIGNING_SECRET,{email:buyerEmail,orderId:receiptId,source:"etsy",v:1,issuedAt:Date.now()},"license");
+        const sent=await sendActivationEmail(env,{to:buyerEmail,code:activationCode,orderId:receiptId});
+        await redisPost(env,["SET",fulfilledKey,String(sent.id||"sent"),"EX",String(60*60*24*365*3)]);
+        await redisPost(env,["SET",replayKey,"1","EX","604800"]);
+        return json({ok:true,fulfilled:true});
       }
 
       if(url.pathname==="/api/admin/issue" && req.method==="POST"){
