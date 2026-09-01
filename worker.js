@@ -226,40 +226,79 @@ async function resolveEtsyShopId(env){
   const cached=String(await redisPost(env,["GET","frontshelf:etsy:shop-id"])||"").trim();
   if(/^[1-9]\d*$/.test(cached))return cached;
 
-  const shopName=String(env.ETSY_SHOP_NAME||"TheFrontShelf").trim();
-  if(!shopName)throw new Error("ETSY_SHOP_NAME_NOT_CONFIGURED");
+  // Etsy access tokens are returned as "<numeric_user_id>.<token>".
+  // Use that owner user ID with Etsy's official getShopByOwnerUserId endpoint.
+  const auth=await loadEtsyAuth(env);
+  if(!auth?.access_token)throw new Error("ETSY_NOT_AUTHORIZED");
+  const userId=String(auth.access_token).split(".")[0]||"";
+  if(!/^[1-9]\d*$/.test(userId))throw new Error("ETSY_OWNER_USER_ID_NOT_FOUND");
 
-  const url=new URL("https://openapi.etsy.com/v3/application/shops");
-  url.searchParams.set("shop_name",shopName);
-
-  const r=await fetch(url.toString(),{
+  const r=await fetch(`https://openapi.etsy.com/v3/application/users/${encodeURIComponent(userId)}/shops`,{
     headers:{"x-api-key":etsyApiKey(env)}
   });
   const j=await r.json().catch(()=>({}));
   if(!r.ok)throw new Error(`Etsy shop lookup failed (${r.status}).`);
 
-  const results=Array.isArray(j?.results)?j.results:[];
-  const exact=results.find(s=>String(s?.shop_name||"").toLowerCase()===shopName.toLowerCase())||results[0];
-  const shopId=String(exact?.shop_id||"").trim();
+  const shopId=String(j?.shop_id||j?.results?.[0]?.shop_id||"").trim();
   if(!/^[1-9]\d*$/.test(shopId))throw new Error("ETSY_SHOP_NOT_FOUND");
 
   await redisPost(env,["SET","frontshelf:etsy:shop-id",shopId]);
   return shopId;
 }
+
+async function fetchEtsyPrivateJson(env,url){
+  const u=new URL(url);
+  if(u.protocol!=="https:"||!["api.etsy.com","openapi.etsy.com"].includes(u.hostname))
+    throw new Error("Unexpected Etsy resource URL.");
+
+  let token=await getEtsyAccessToken(env);
+  let r=await fetch(u.toString(),{
+    headers:{"x-api-key":etsyApiKey(env),Authorization:`Bearer ${token}`}
+  });
+
+  if(r.status===401){
+    token=(await refreshEtsyAuth(env,await loadEtsyAuth(env))).access_token;
+    r=await fetch(u.toString(),{
+      headers:{"x-api-key":etsyApiKey(env),Authorization:`Bearer ${token}`}
+    });
+  }
+
+  if(r.status===404)return null;
+
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(`Etsy API lookup failed (${r.status}).`);
+  return j;
+}
+
 async function getEtsyReceipt(env,receiptId){
   const shopId=await resolveEtsyShopId(env);
-  return fetchEtsyApi(env,`https://openapi.etsy.com/v3/application/shops/${shopId}/receipts/${encodeURIComponent(receiptId)}`);
+  return fetchEtsyPrivateJson(
+    env,
+    `https://openapi.etsy.com/v3/application/shops/${shopId}/receipts/${encodeURIComponent(receiptId)}`
+  );
 }
+
 async function getEtsyReceiptTransactions(env,receiptId){
   const shopId=await resolveEtsyShopId(env);
-  return fetchEtsyApi(env,`https://openapi.etsy.com/v3/application/shops/${shopId}/receipts/${encodeURIComponent(receiptId)}/transactions`);
+  const result=await fetchEtsyPrivateJson(
+    env,
+    `https://openapi.etsy.com/v3/application/shops/${shopId}/receipts/${encodeURIComponent(receiptId)}/transactions`
+  );
+  return Array.isArray(result?.results)?result.results:[];
 }
+
 async function verifyEtsyPurchase(env,email,receiptId){
   const receipt=await getEtsyReceipt(env,receiptId);
-  if(String(receipt?.receipt_id||"")!==String(receiptId))return {ok:false,error:"That Etsy order could not be verified."};
-  if(String(receipt?.status||"").toLowerCase()!=="paid")return {ok:false,error:"That Etsy order is not marked as paid."};
+  if(!receipt)return {ok:false,error:"That Etsy order could not be verified."};
+  if(String(receipt?.receipt_id||"")!==String(receiptId))
+    return {ok:false,error:"That Etsy order could not be verified."};
+  if(String(receipt?.status||"").toLowerCase()!=="paid")
+    return {ok:false,error:"That Etsy order is not marked as paid."};
+
   const buyerEmail=receiptBuyerEmail(receipt);
-  if(!buyerEmail||buyerEmail!==normEmail(email))return {ok:false,error:"That email does not match the Etsy order."};
+  if(!buyerEmail||buyerEmail!==normEmail(email))
+    return {ok:false,error:"That email does not match the Etsy order."};
+
   if(env.ETSY_PLANNER_LISTING_ID){
     let tx=Array.isArray(receipt?.transactions)?receipt.transactions:[];
     if(!tx.length)tx=await getEtsyReceiptTransactions(env,receiptId);
@@ -267,6 +306,7 @@ async function verifyEtsyPurchase(env,email,receiptId){
     if(!tx.some(t=>String(t?.listing_id||t?.listing?.listing_id||t?.product_data?.listing_id||"")===wanted))
       return {ok:false,error:"That Etsy order does not contain The Front Shelf planner."};
   }
+
   return {ok:true,receipt};
 }
 
@@ -336,7 +376,7 @@ export default {
       const len=Number(req.headers.get("content-length")||0);
       if(len>1000000)return json({ok:false,error:"Request too large."},413);
       if(req.method==="OPTIONS")return new Response(null,{status:204,headers:BASE_SECURITY_HEADERS});
-      if(url.pathname==="/health") return json({ok:true,service:"the-front-shelf-access",etsyConfigured:!!(env.ETSY_KEYSTRING&&env.ETSY_SHARED_SECRET&&env.ETSY_WEBHOOK_SECRET&&env.ETSY_SHOP_ID)});
+      if(url.pathname==="/health") return json({ok:true,service:"the-front-shelf-access",etsyConfigured:!!(env.ETSY_KEYSTRING&&env.ETSY_SHARED_SECRET&&env.ETSY_WEBHOOK_SECRET)});
       if(url.pathname==="/") return html(loginPage());
       if(url.pathname==="/admin") return html(adminPage());
 
