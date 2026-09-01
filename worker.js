@@ -203,21 +203,6 @@ async function fetchEtsyResource(env,url){
   const j=await r.json().catch(()=>({})); if(!r.ok)throw new Error(`Etsy receipt lookup failed (${r.status}).`); return j;
 }
 function htmlEscape(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
-async function sendActivationEmail(env,{to,code,orderId}){
-  if(!env.RESEND_API_KEY)throw new Error("RESEND_NOT_CONFIGURED");
-  if(!env.RESEND_FROM_EMAIL)throw new Error("RESEND_FROM_EMAIL_NOT_CONFIGURED");
-  const plannerUrl="https://the-front-shelf-job-planner.lardeux16.workers.dev";
-  const payload={from:String(env.RESEND_FROM_EMAIL),to:[to],subject:"Your The Front Shelf planner access",
-  html:`<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;padding:28px;color:#342c28">
-  <h1 style="font-family:Georgia,serif;font-weight:500">Your planner is ready.</h1>
-  <p>Thank you for your purchase. Use the email associated with your Etsy order and the activation code below.</p>
-  <div style="background:#eee4d8;padding:16px;border-radius:12px;word-break:break-all"><b>Activation code</b><br><br><span style="font-family:monospace">${htmlEscape(code)}</span></div>
-  <p><a href="${plannerUrl}">Open your planner</a></p>
-  <p style="font-size:12px;color:#746a63">Your license supports up to 2 devices with cross-device sync. Keep this activation code private.</p>
-  <p style="font-size:11px;color:#8a7d73">Order reference: ${htmlEscape(orderId)}</p></div>`};
-  const r=await fetch("https://api.resend.com/emails",{method:"POST",headers:{Authorization:`Bearer ${env.RESEND_API_KEY}`,"content-type":"application/json"},body:JSON.stringify(payload)});
-  const j=await r.json().catch(()=>({})); if(!r.ok||!j.id)throw new Error(`Resend email failed (${r.status}).`); return j;
-}
 function receiptObject(x){
   if(x?.receipt_id)return x;
   if(Array.isArray(x?.results)&&x.results[0])return x.results[0];
@@ -229,6 +214,36 @@ function receiptHasPlanner(r,listingId){
   if(!listingId)return true;
   const wanted=String(listingId),tx=Array.isArray(r?.transactions)?r.transactions:[];
   return tx.some(t=>String(t?.listing_id||t?.listing?.listing_id||t?.product_data?.listing_id||"")===wanted);
+}
+function cleanEtsyReceiptId(v){
+  const s=String(v||"").trim();
+  return /^[1-9]\d{0,19}$/.test(s)?s:"";
+}
+async function getEtsyReceipt(env,receiptId){
+  const shopId=String(env.ETSY_SHOP_ID||"").trim();
+  if(!/^[1-9]\d*$/.test(shopId))throw new Error("ETSY_SHOP_ID_NOT_CONFIGURED");
+  return receiptObject(await fetchEtsyResource(env,`https://openapi.etsy.com/v3/application/shops/${shopId}/receipts/${receiptId}`));
+}
+async function getEtsyReceiptTransactions(env,receiptId){
+  const shopId=String(env.ETSY_SHOP_ID||"").trim();
+  if(!/^[1-9]\d*$/.test(shopId))throw new Error("ETSY_SHOP_ID_NOT_CONFIGURED");
+  const x=await fetchEtsyResource(env,`https://openapi.etsy.com/v3/application/shops/${shopId}/receipts/${receiptId}/transactions`);
+  return Array.isArray(x?.results)?x.results:[];
+}
+async function verifyEtsyPurchase(env,email,receiptId){
+  const receipt=await getEtsyReceipt(env,receiptId);
+  if(String(receipt?.receipt_id||"")!==String(receiptId))return {ok:false,error:"That Etsy order could not be verified."};
+  if(String(receipt?.status||"").toLowerCase()!=="paid")return {ok:false,error:"That Etsy order is not marked as paid."};
+  const buyerEmail=receiptBuyerEmail(receipt);
+  if(!buyerEmail||buyerEmail!==normEmail(email))return {ok:false,error:"That email does not match the Etsy order."};
+  if(env.ETSY_PLANNER_LISTING_ID){
+    let tx=Array.isArray(receipt?.transactions)?receipt.transactions:[];
+    if(!tx.length)tx=await getEtsyReceiptTransactions(env,receiptId);
+    const wanted=String(env.ETSY_PLANNER_LISTING_ID);
+    if(!tx.some(t=>String(t?.listing_id||t?.listing?.listing_id||t?.product_data?.listing_id||"")===wanted))
+      return {ok:false,error:"That Etsy order does not contain The Front Shelf planner."};
+  }
+  return {ok:true,receipt};
 }
 
 function decodePlanner(){
@@ -256,9 +271,9 @@ label{display:block;font-size:10px;font-weight:900;letter-spacing:.5px;margin-to
 button{width:100%;border:0;border-radius:10px;padding:13px;margin-top:16px;background:#44342c;color:white;font-weight:900;cursor:pointer}.secondary{background:#eadbc9;color:#44342c}
 .msg{font-size:12px;margin-top:14px;line-height:1.5}.tiny{font-size:10px;color:#84766c;margin-top:18px;line-height:1.5}
 </style></head><body><main class="card"><div class="eyebrow">THE FRONT SHELF · BUYER ACCESS</div><h1>Open your planner.</h1>
-<p class="sub">Enter the email used for your purchase and your activation code. A license can be active on up to 2 devices.</p>
+<p class="sub">Enter the email used for your Etsy purchase and your Etsy order number. We’ll verify the purchase securely. A license can be active on up to 2 devices.</p>
 <label>Purchase email<input id="email" type="email" autocomplete="email"></label>
-<label>Activation code<input id="code" autocomplete="one-time-code"></label>
+<label>Etsy order number<input id="order" inputmode="numeric" autocomplete="off"></label>
 <button id="activate">ACTIVATE THIS DEVICE</button><button id="reset" class="secondary">REPLACE / RESET MY DEVICES</button>
 <div class="msg" id="msg">${message}</div><div class="tiny">Sharing this website link alone does not give access to the planner.</div></main>
 <script>
@@ -266,13 +281,13 @@ const $=s=>document.querySelector(s);
 function did(){let v=localStorage.getItem("frontShelfDeviceId");if(!v){v=crypto.randomUUID();localStorage.setItem("frontShelfDeviceId",v)}return v}
 async function go(path){
  $("#msg").textContent="Checking access…";
- const r=await fetch(path,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({email:$("#email").value.trim(),code:$("#code").value.trim(),deviceId:did()})});
+ const r=await fetch(path,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({email:$("#email").value.trim(),orderId:$("#order").value.trim(),deviceId:did()})});
  const j=await r.json().catch(()=>({ok:false,error:"Unexpected response."}));
  if(!r.ok||!j.ok){$("#msg").textContent=j.error||"Access could not be verified.";return}
  location.href="/planner";
 }
 $("#activate").onclick=()=>go("/api/activate");
-$("#reset").onclick=()=>{if(confirm("Reset all devices on this license and activate this device?"))go("/api/reset-devices")};
+$("#reset").onclick=()=>{if(confirm("Reset all devices for this purchase and activate this device?"))go("/api/reset-devices")};
 </script></body></html>`;
 }
 function adminPage(){
@@ -297,54 +312,8 @@ export default {
       const len=Number(req.headers.get("content-length")||0);
       if(len>1000000)return json({ok:false,error:"Request too large."},413);
       if(req.method==="OPTIONS")return new Response(null,{status:204,headers:BASE_SECURITY_HEADERS});
-      if(url.pathname==="/health") return json({ok:true,service:"the-front-shelf-access",etsyConfigured:!!(env.ETSY_KEYSTRING&&env.ETSY_SHARED_SECRET&&env.ETSY_WEBHOOK_SECRET),resendConfigured:!!(env.RESEND_API_KEY&&env.RESEND_FROM_EMAIL)});
+      if(url.pathname==="/health") return json({ok:true,service:"the-front-shelf-access",etsyConfigured:!!(env.ETSY_KEYSTRING&&env.ETSY_SHARED_SECRET&&env.ETSY_WEBHOOK_SECRET&&env.ETSY_SHOP_ID)});
       if(url.pathname==="/") return html(loginPage());
-      if(url.pathname==="/admin/test-email" && req.method==="GET"){
-        return html(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-        <title>The Front Shelf — Test Activation Email</title>
-        <style>
-        *{box-sizing:border-box}body{margin:0;background:#211b18;color:#342a25;font-family:Arial,sans-serif;min-height:100vh;display:grid;place-items:center;padding:20px}
-        .c{width:min(560px,100%);background:#f7f0e6;border-radius:18px;padding:25px}
-        h1{font-family:Georgia,serif;font-weight:500;margin-top:0}
-        p{font-size:13px;line-height:1.5;color:#67584f}
-        label{display:block;font-size:11px;font-weight:800;margin-top:14px}
-        input{width:100%;padding:12px;margin-top:6px;border:1px solid #c9b199;border-radius:9px;font-size:16px}
-        button{width:100%;padding:12px;margin-top:16px;background:#49382f;color:#fff;border:0;border-radius:9px;font-weight:900}
-        .out{white-space:pre-wrap;word-break:break-word;background:#fff;border:1px solid #d8c6b4;border-radius:9px;padding:12px;margin-top:16px;font-size:12px;min-height:48px}
-        a{color:#765743}
-        </style></head><body><main class="c">
-        <h1>Send a test activation email</h1>
-        <p>This private test sends a real signed activation code through the same Resend function used by Etsy fulfillment.</p>
-        <label>Admin secret<input id="secret" type="password" autocomplete="off"></label>
-        <label>Your email<input id="email" type="email" autocomplete="email"></label>
-        <button id="send">SEND TEST ACTIVATION EMAIL</button>
-        <div class="out" id="out">Ready.</div>
-        <p><a href="/admin">Back to admin</a></p>
-        </main>
-        <script>
-        document.querySelector("#send").onclick=async()=>{
-          const out=document.querySelector("#out");
-          out.textContent="Sending…";
-          try{
-            const r=await fetch("/api/admin/test-email",{
-              method:"POST",
-              headers:{"content-type":"application/json"},
-              body:JSON.stringify({
-                adminSecret:document.querySelector("#secret").value,
-                email:document.querySelector("#email").value.trim()
-              })
-            });
-            const j=await r.json().catch(()=>({}));
-            out.textContent=r.ok&&j.ok
-              ? "Success! Check your inbox.\\nOrder: "+j.orderId
-              : (j.error||"The test failed.");
-          }catch(e){
-            out.textContent="The test request failed.";
-          }
-        };
-        </script></body></html>`);
-      }
-
       if(url.pathname==="/admin") return html(adminPage());
 
       if(url.pathname==="/planner"){
@@ -404,29 +373,9 @@ export default {
         if(env.ETSY_PLANNER_LISTING_ID&&!receiptHasPlanner(receipt,env.ETSY_PLANNER_LISTING_ID))return json({ok:true,ignored:true,reason:"not-the-planner-listing"});
         const buyerEmail=receiptBuyerEmail(receipt);
         if(!validEmail(buyerEmail))return json({ok:false,error:"Buyer email was not available on the Etsy receipt."},500);
-        const fulfilledKey=`frontshelf:etsy:fulfilled:${receiptId}`;
-        if(await redisPost(env,["GET",fulfilledKey])){await redisPost(env,["SET",replayKey,"1","EX","604800"]);return json({ok:true,alreadyFulfilled:true})}
-        const activationCode=await signPayload(env.LICENSE_SIGNING_SECRET,{email:buyerEmail,orderId:receiptId,source:"etsy",v:1,issuedAt:Date.now()},"license");
-        const sent=await sendActivationEmail(env,{to:buyerEmail,code:activationCode,orderId:receiptId});
-        await redisPost(env,["SET",fulfilledKey,String(sent.id||"sent"),"EX",String(60*60*24*365*3)]);
+        await redisPost(env,["SET",`frontshelf:etsy:paid:${receiptId}`,buyerEmail,"EX",String(60*60*24*365*3)]);
         await redisPost(env,["SET",replayKey,"1","EX","604800"]);
-        return json({ok:true,fulfilled:true});
-      }
-
-      if(url.pathname==="/api/admin/test-email" && req.method==="POST"){
-        const rl=await rateLimit(env,req,"admin-test-email",5,600);
-        if(!rl.allowed)return json({ok:false,error:"Too many test-email attempts. Try again later."},429);
-        const body=await req.json().catch(()=>({}));
-        if(!env.ADMIN_SECRET||typeof body.adminSecret!=="string"||body.adminSecret!==env.ADMIN_SECRET)
-          return json({ok:false,error:"Invalid admin secret."},401);
-        const email=normEmail(body.email);
-        if(!validEmail(email))return json({ok:false,error:"Enter a valid email."},400);
-        const orderId=`TEST-${Date.now()}`;
-        const code=await signPayload(env.LICENSE_SIGNING_SECRET,{
-          email,orderId,source:"admin-test",v:1,issuedAt:Date.now()
-        },"license");
-        const sent=await sendActivationEmail(env,{to:email,code,orderId});
-        return json({ok:true,email,orderId,resendId:sent.id});
+        return json({ok:true,verified:true});
       }
 
       if(url.pathname==="/api/admin/issue" && req.method==="POST"){
@@ -445,17 +394,18 @@ export default {
         const rl=await rateLimit(env,req,"activate",20,600);
         if(!rl.allowed)return json({ok:false,error:"Too many activation attempts. Try again later."},429,{"retry-after":"600"});
         const body=await req.json().catch(()=>({}));
-        const email=normEmail(body.email),deviceId=cleanDeviceId(body.deviceId);
-        const lic=await verifyLicenseCode(env,email,body.code);
-        if(!lic)return json({ok:false,error:"That email and activation code do not match."},401);
+        const email=normEmail(body.email),deviceId=cleanDeviceId(body.deviceId),orderId=cleanEtsyReceiptId(body.orderId);
+        if(!validEmail(email)||!orderId)return json({ok:false,error:"Enter a valid purchase email and Etsy order number."},400);
         if(!deviceId)return json({ok:false,error:"Invalid device identifier."},400);
+        const purchase=await verifyEtsyPurchase(env,email,orderId);
+        if(!purchase.ok)return json({ok:false,error:purchase.error},401);
         const key=`frontshelf:devices:${await sha256(email)}`;
         const members=await redis(env,["smembers",key])||[];
         if(!members.includes(deviceId) && members.length>=2)
           return json({ok:false,error:"This license is already active on 2 devices. Use Replace / Reset My Devices."},403);
         await redis(env,["sadd",key,deviceId]);
         await redis(env,["expire",key,String(60*60*24*365*3)]);
-        const token=await signPayload(env.LICENSE_SIGNING_SECRET,{email,deviceId,orderId:lic.orderId,exp:Date.now()+30*24*60*60*1000},"session");
+        const token=await signPayload(env.LICENSE_SIGNING_SECRET,{email,deviceId,orderId,exp:Date.now()+30*24*60*60*1000},"session");
         return json({ok:true},200,{"set-cookie":sessionCookie(token)});
       }
 
@@ -534,12 +484,13 @@ export default {
         const rl=await rateLimit(env,req,"reset-devices",6,3600);
         if(!rl.allowed)return json({ok:false,error:"Too many reset attempts. Try again later."},429,{"retry-after":"3600"});
         const body=await req.json().catch(()=>({}));
-        const email=normEmail(body.email),deviceId=cleanDeviceId(body.deviceId);
-        const lic=await verifyLicenseCode(env,email,body.code);
-        if(!lic)return json({ok:false,error:"That email and activation code do not match."},401);
+        const email=normEmail(body.email),deviceId=cleanDeviceId(body.deviceId),orderId=cleanEtsyReceiptId(body.orderId);
+        if(!validEmail(email)||!orderId)return json({ok:false,error:"Enter a valid purchase email and Etsy order number."},400);
         if(!deviceId)return json({ok:false,error:"Invalid device identifier."},400);
+        const purchase=await verifyEtsyPurchase(env,email,orderId);
+        if(!purchase.ok)return json({ok:false,error:purchase.error},401);
 
-        // Credential-only resets are allowed only when there are currently no active devices.
+        // Purchase-only resets are allowed only when there are currently no active devices.
         // If devices already exist, the buyer must reset from an authenticated device in Account & Devices.
         const key=`frontshelf:devices:${await sha256(email)}`;
         const members=await redis(env,["smembers",key])||[];
@@ -548,7 +499,7 @@ export default {
 
         await redis(env,["sadd",key,deviceId]);
         await redis(env,["expire",key,String(60*60*24*365*3)]);
-        const token=await signPayload(env.LICENSE_SIGNING_SECRET,{email,deviceId,orderId:lic.orderId,exp:Date.now()+30*24*60*60*1000},"session");
+        const token=await signPayload(env.LICENSE_SIGNING_SECRET,{email,deviceId,orderId,exp:Date.now()+30*24*60*60*1000},"session");
         return json({ok:true},200,{"set-cookie":sessionCookie(token)});
       }
 
