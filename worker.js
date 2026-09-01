@@ -292,7 +292,8 @@ async function verifyEtsyPurchase(env,email,receiptId){
   if(!receipt)return {ok:false,error:"That Etsy order could not be verified."};
   if(String(receipt?.receipt_id||"")!==String(receiptId))
     return {ok:false,error:"That Etsy order could not be verified."};
-  if(String(receipt?.status||"").toLowerCase()!=="paid")
+  const receiptStatus = String(receipt?.status || "").toLowerCase();
+if (!["paid", "completed"].includes(receiptStatus))
     return {ok:false,error:"That Etsy order is not marked as paid."};
 
   const buyerEmail=receiptBuyerEmail(receipt);
