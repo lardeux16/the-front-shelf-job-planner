@@ -219,16 +219,40 @@ function cleanEtsyReceiptId(v){
   const s=String(v||"").trim();
   return /^[1-9]\d{0,19}$/.test(s)?s:"";
 }
+async function resolveEtsyShopId(env){
+  const configured=String(env.ETSY_SHOP_ID||"").trim();
+  if(/^[1-9]\d*$/.test(configured))return configured;
+
+  const cached=String(await redisPost(env,["GET","frontshelf:etsy:shop-id"])||"").trim();
+  if(/^[1-9]\d*$/.test(cached))return cached;
+
+  const shopName=String(env.ETSY_SHOP_NAME||"TheFrontShelf").trim();
+  if(!shopName)throw new Error("ETSY_SHOP_NAME_NOT_CONFIGURED");
+
+  const url=new URL("https://openapi.etsy.com/v3/application/shops");
+  url.searchParams.set("shop_name",shopName);
+
+  const r=await fetch(url.toString(),{
+    headers:{"x-api-key":etsyApiKey(env)}
+  });
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(`Etsy shop lookup failed (${r.status}).`);
+
+  const results=Array.isArray(j?.results)?j.results:[];
+  const exact=results.find(s=>String(s?.shop_name||"").toLowerCase()===shopName.toLowerCase())||results[0];
+  const shopId=String(exact?.shop_id||"").trim();
+  if(!/^[1-9]\d*$/.test(shopId))throw new Error("ETSY_SHOP_NOT_FOUND");
+
+  await redisPost(env,["SET","frontshelf:etsy:shop-id",shopId]);
+  return shopId;
+}
 async function getEtsyReceipt(env,receiptId){
-  const shopId=String(env.ETSY_SHOP_ID||"").trim();
-  if(!/^[1-9]\d*$/.test(shopId))throw new Error("ETSY_SHOP_ID_NOT_CONFIGURED");
-  return receiptObject(await fetchEtsyResource(env,`https://openapi.etsy.com/v3/application/shops/${shopId}/receipts/${receiptId}`));
+  const shopId=await resolveEtsyShopId(env);
+  return fetchEtsyApi(env,`https://openapi.etsy.com/v3/application/shops/${shopId}/receipts/${encodeURIComponent(receiptId)}`);
 }
 async function getEtsyReceiptTransactions(env,receiptId){
-  const shopId=String(env.ETSY_SHOP_ID||"").trim();
-  if(!/^[1-9]\d*$/.test(shopId))throw new Error("ETSY_SHOP_ID_NOT_CONFIGURED");
-  const x=await fetchEtsyResource(env,`https://openapi.etsy.com/v3/application/shops/${shopId}/receipts/${receiptId}/transactions`);
-  return Array.isArray(x?.results)?x.results:[];
+  const shopId=await resolveEtsyShopId(env);
+  return fetchEtsyApi(env,`https://openapi.etsy.com/v3/application/shops/${shopId}/receipts/${encodeURIComponent(receiptId)}/transactions`);
 }
 async function verifyEtsyPurchase(env,email,receiptId){
   const receipt=await getEtsyReceipt(env,receiptId);
