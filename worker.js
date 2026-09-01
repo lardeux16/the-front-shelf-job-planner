@@ -296,10 +296,10 @@ async function verifyEtsyPurchase(env,email,receiptId){
 if (!["paid", "completed"].includes(receiptStatus))
     return {ok:false,error:"That Etsy order is not marked as paid."};
 
-  const buyerEmail=receiptBuyerEmail(receipt);
-  if(!buyerEmail||buyerEmail!==normEmail(email))
-    return {ok:false,error:"That email does not match the Etsy order."};
-
+  const buyerEmail = receiptBuyerEmail(receipt);
+if (buyerEmail && buyerEmail !== normEmail(email))
+  return {ok:false,error:"That email does not match the Etsy order."};
+  
   if(env.ETSY_PLANNER_LISTING_ID){
     let tx=Array.isArray(receipt?.transactions)?receipt.transactions:[];
     if(!tx.length)tx=await getEtsyReceiptTransactions(env,receiptId);
